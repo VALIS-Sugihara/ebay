@@ -1,0 +1,25 @@
+service: python-requirements-layer
+
+plugins:
+  - serverless-python-requirements
+custom:
+  pythonRequirements:
+    usePipenv: true # Pipfileを使いたくない場合はここを削除
+    dockerizePip: true
+    layer: true # ここをtrueに
+
+provider:
+  name: aws
+  runtime: python3.7
+  region: ${opt:region, 'us-east-1'} # Overwrite the default region used. Default is us-east-1
+  profile: ebay-dev  # The default profile to use with this service
+  memorySize: 512 # Overwrite the default memory size. Default is 1024
+  reservedConcurrency: 5 # optional, Overwrite the default reserved concurrency limit. By default, AWS uses account concurrency limit
+  timeout: 10 # The default is 6 seconds. Note: API Gateway current maximum is 30 seconds
+  logRetentionInDays: 14 # Set the default RetentionInDays for a CloudWatch LogGroup
+
+resources:
+  Outputs:
+    PythonRequirementsLambdaLayerExport: # function側から使いたい名前にする
+      Value:
+        Ref: PythonRequirementsLambdaLayer # これはpythonRequirementsで設定されるので固定値
