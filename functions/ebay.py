@@ -1,29 +1,23 @@
 import json
-import requests
+# import datetime
+# import requests
 from ebaysdk.finding import Connection as finding
-# from ebaysdk import nodeText
 
 
 def test(event, context):
-    f = finding()
-    f.execute('findItemsAdvanced', {'keywords': 'shoes'})
+    ebay = Ebay()
+    # response = ebay.general_search(keywords="daiwa reel")
+    # item = ebay._get_items(response)[0]
+    # print(item)
 
-    dom = f.response_dom()
-    mydict = f.response_dict()
-    myobj = f.response_obj()
+    # title = item.title
+    # detail_keywords = " ".join(title.split(" ")[0:3])
+    # print("detail_keywords: ", detail_keywords)
+    # response = ebay.detail_search(keywords=detail_keywords)
+    response = ebay.detail_search(keywords="daiwa reel")
+    item = ebay._get_items(response)[1]
+    print(item)
 
-    print(myobj.itemSearchURL)
-
-    return
-
-    # process the response via DOM
-    items = dom.getElementsByTagName('item')
-
-    for item in items:
-        print(nodeText(item.getElementsByTagName('title')[0]))
-
-    # r = requests.get('https://google.com')
-    # print(r.status_code)
     # TODO implement
     return {
         'statusCode': 200,
@@ -31,3 +25,96 @@ def test(event, context):
     }
 
 
+class Ebay:
+
+    config_file = "ebay.yaml"
+    _method_names = ("findCompletedItems", "findItemsAdvanced",)
+
+    def __init__(self):
+        self.api = finding(config_file=self.config_file)
+
+    def general_search(self, method_name="findItemsAdvanced", keywords=None, add_options={}):
+        add_options = {
+            "itemFilter": [
+                # Used
+                {
+                    "name": "Condition",
+                    "value": 3000
+                },
+                # not Auction
+                {
+                    "name": "ListingType",
+                    "value": "FixedPrice"
+                },
+                # Sold Items
+                {
+                    "name": "SoldItemsOnly",
+                    "value": "true"
+                }
+            ]
+        }
+        return self.find_items(method_name=method_name, keywords=keywords, add_options=add_options)
+
+    def detail_search(self, method_name="findCompletedItems", keywords=None, add_options={}):
+        add_options = {
+            "itemFilter": [
+                # Used
+                {
+                    "name": "Condition",
+                    "value": 3000
+                },
+                # not Auction
+                {
+                    "name": "ListingType",
+                    "value": "FixedPrice"
+                },
+                # Sold Items
+                {
+                    "name": "SoldItemsOnly",
+                    "value": "true"
+                }
+            ]
+        }
+        return self.find_items(method_name=method_name, keywords=keywords, add_options=add_options)
+
+    def find_items(self, method_name="findItemsAdvanced", keywords=None, add_options={}):
+        options = {
+            # キーワード
+            "keywords": keywords,
+            # ページネーション
+            "paginationInput": {
+                "entriesPerPage": 100,
+                "pageNumber": 1
+            },
+            "itemFilter": [
+                # Used
+                {
+                    "name": "Condition",
+                    "value": 3000
+                },
+                # not Auction
+                {
+                    "name": "ListingType",
+                    "value": "FixedPrice"
+                },
+            ]
+        }
+        # TODO:: update
+        if any(options) and isinstance(add_options, dict):
+            options.update(add_options)
+
+        response = self.api.execute(method_name, options)
+
+        self._assert_response(response)
+
+        return response
+
+    def _assert_response(self, response):
+        print(response.reply)
+        # 接続確認
+        assert response.reply.ack == 'Success', print("Response Error!! ", response.reply.ack)
+        # 返却値（item）確認
+        assert type(response.reply.searchResult.item) == list, print("Invalid Item!! ", response.reply)
+
+    def _get_items(self, response):
+        return response.reply.searchResult.item
