@@ -1,6 +1,7 @@
 import json
 # import datetime
 # import requests
+import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +20,6 @@ def test(event, context):
     response = ebay.general_search(keywords="daiwa reel", add_options=add_options)
     items = ebay.get_items(response)
 
-    cnt = ebay.get_total_count(response)
     pages = int(ebay.get_total_pages(response))
 
     df = ebay.make_dataframe(items)
@@ -29,7 +29,7 @@ def test(event, context):
         for i in range(1, pages):
             add_options = {"paginationInput": {
                 "entriesPerPage": 100,
-                "pageNumber": i+1
+                "pageNumber": i + 1
             }}
 
             response = ebay.general_search(keywords="daiwa reel", add_options=add_options)
@@ -37,8 +37,23 @@ def test(event, context):
 
             df = df.append(ebay.make_dataframe(items))
 
+    # *** SearchDetails ***
+    names = df.shortTitle
+    counts = []
+    for name in names:
+        ptn = r"[<>]"
+        name = re.sub(ptn, "", name)
+        try:
+            response = ebay.detail_search(keywords=name)
+            cnt = ebay.get_total_count(response)
+        except:
+            cnt = None
+        counts.append(cnt)
+
+    df["TotalCounts"] = counts
+
     # JP産のもの
-    df = df[df["country"]=="JP"]
+    df = df[df["country"] == "JP"]
     # 100USD 以上のもの
     # df = df[df["currentPrice"] >= 100]
 
@@ -108,10 +123,13 @@ class Ebay:
     config_file = "ebay.yaml"
     _method_names = ("findCompletedItems", "findItemsAdvanced",)
     column_permutations = (
-        "shortTitle", "itemId", "title", "currentPrice", "currency", "country", "primaryCategory.categoryId", "primaryCategory.categoryName", "listingType", "condition"
+        "shortTitle", "itemId", "title", "currentPrice", "currency", "country", "primaryCategory.categoryId",
+        "primaryCategory.categoryName", "listingType", "condition"
     )
     property_permutations = (
-        "shortTitle", "itemId", "title", {"sellingStatus": {"currentPrice": "value"}}, {"sellingStatus": {"currentPrice": "_currencyId"}}, "country", {"primaryCategory": "categoryId"}, {"primaryCategory": "categoryName"}, {"listingInfo": "listingType"}, {"condition": "conditionDisplayName"}
+        "shortTitle", "itemId", "title", {"sellingStatus": {"currentPrice": "value"}},
+        {"sellingStatus": {"currentPrice": "_currencyId"}}, "country", {"primaryCategory": "categoryId"},
+        {"primaryCategory": "categoryName"}, {"listingInfo": "listingType"}, {"condition": "conditionDisplayName"}
     )
 
     def __init__(self):
@@ -172,7 +190,6 @@ class Ebay:
         if any(add_options) and isinstance(add_options, dict):
             options.update(add_options)
 
-        print(options)
         response = self.api.execute(method_name, options)
 
         self._assert_response(response)
