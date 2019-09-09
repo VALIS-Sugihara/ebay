@@ -144,10 +144,21 @@ provider:
 #  individually: true # Enables individual packaging for each function. If true you must provide package for each function. Defaults to false
 
 functions:
-  ebayTest: # A Function
-    handler: ebay.test  # The file and module for this specific function.
-    name: ${self:provider.stage}-ebayTest # optional, Deployed Lambda name
-    description: Test Ebay function # The description of your function.
+  wordTest: # A Function
+    handler: word2vec.test  # The file and module for this specific function.
+    name: ${self:provider.stage}-wordTest # optional, Deployed Lambda name
+    description: Test Words function # The description of your function.
+    memorySize: 512 # memorySize for this specific function.
+    reservedConcurrency: 5 # optional, reserved concurrency limit for this function. By default, AWS uses account concurrency limit
+    #    runtime: nodejs10.x # Runtime for this specific function. Overrides the default which is set on the provider level
+    timeout: 10 # Timeout for this specific function.  Overrides the default set above.
+    layers:
+      - ${self:custom.requirements_layer} # ここを設定
+
+  mainTest: # A Function
+    handler: main.test  # The file and module for this specific function.
+    name: ${self:provider.stage}-mainTest # optional, Deployed Lambda name
+    description: Test Main function # The description of your function.
     memorySize: 512 # memorySize for this specific function.
     reservedConcurrency: 5 # optional, reserved concurrency limit for this function. By default, AWS uses account concurrency limit
 #    runtime: nodejs10.x # Runtime for this specific function. Overrides the default which is set on the provider level

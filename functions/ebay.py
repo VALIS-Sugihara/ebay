@@ -1,78 +1,6 @@
-import json
-# import datetime
-import requests
-import re
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from ebaysdk.finding import Connection as finding
-
-
-def test(event, context):
-    ebay = Ebay()
-
-    page_number = 1
-    add_options = {"paginationInput": {
-        "entriesPerPage": 100,
-        "pageNumber": page_number
-    }}
-
-    keywords = "leica"
-
-    response = ebay.general_search(keywords=keywords, add_options=add_options)
-    items = ebay.get_items(response)
-
-    pages = int(ebay.get_total_pages(response))
-
-    df = ebay.make_dataframe(items)
-
-    # Get All Pages.
-    if pages > 1:
-        for i in range(1, pages):
-            add_options = {"paginationInput": {
-                "entriesPerPage": 100,
-                "pageNumber": i + 1
-            }}
-
-            response = ebay.general_search(keywords="daiwa reel", add_options=add_options)
-            items = ebay.get_items(response)
-
-            df = df.append(ebay.make_dataframe(items))
-
-    # *** SearchDetails ***
-    names = df.shortTitle
-    counts = []
-    for name in names:
-        # ptn = r"[<>]"
-        # name = re.sub(ptn, "", name)
-        # try:
-        #     response = ebay.detail_search(keywords=name)
-        #     cnt = ebay.get_total_count(response)
-        # except:
-        #     cnt = None
-        # # print(name, cnt)
-        # counts.append(cnt)
-
-        # TEST
-        counts.append(None)
-
-    df["TotalCounts"] = counts
-
-    # JP産のもの
-    df = df[df["country"] == "JP"]
-    # 100USD 以上のもの
-    # df = df[df["currentPrice"] >= 100]
-    # count数でソート
-    df = df.sort_values(by=["TotalCounts"], ascending=False)
-
-    # CSV 出力
-    df.to_csv("sample_leica.csv")
-
-    # TODO implement
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Hello from Lambda!')
-    }
+from google import Google
 
 
 class Ebay:
@@ -139,6 +67,7 @@ class Ebay:
         {"sellingStatus": {"currentPrice": "_currencyId"}}, "country", {"primaryCategory": "categoryId"},
         {"primaryCategory": "categoryName"}, {"listingInfo": "listingType"}, {"condition": "conditionDisplayName"}
     )
+    keywords = None
 
     def __init__(self):
         self.api = finding(config_file=self.config_file)
@@ -190,6 +119,7 @@ class Ebay:
         return self.find_items(method_name=method_name, keywords=keywords, add_options=options)
 
     def find_items(self, method_name="findItemsAdvanced", keywords=None, add_options={}):
+        self._set_keywords(keywords)
         options = {
             # キーワード
             "keywords": keywords,
@@ -217,7 +147,14 @@ class Ebay:
 
         def _get_value(key, item):
             if key == "shortTitle":
-                return " ".join(getattr(item, "title", []).split()[:4])
+                lst = getattr(item, "title", []).lower().split()
+                # キーワードから３単語分抽出
+                try:
+                    target = int(lst.index(self._get_keywords()))
+                except:
+                    target = 0
+                length = target + 3
+                return " ".join(lst[target:length])
             if key == "JP_shortTitle":
                 # TEST
                 return None
@@ -251,20 +188,8 @@ class Ebay:
     def get_total_pages(self, response):
         return response.reply.paginationOutput.totalPages
 
+    def _set_keywords(self, keywords):
+        self.keywords = keywords
 
-class Google:
-    # GAS webapp in Translation Project
-    url = "https://script.google.com/macros/s/AKfycbytv3cdchwPyuVI6f9wLtpvSqT_pyfMcEMMhNI9xeGPAWxxtqXu/exec"
-
-    def __init__(self):
-        pass
-
-    def translate(self, text="", source="en", target="ja"):
-        query = "?text=%s&source=%s&target=%s" % (text, source, target,)
-        url = self.url + query
-        response = requests.get(url)
-
-        if response.status_code != 200:
-            raise ConnectionError
-
-        return response.text
+    def _get_keywords(self):
+        return self.keywords
