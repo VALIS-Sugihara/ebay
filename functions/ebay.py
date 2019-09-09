@@ -1,6 +1,6 @@
 import json
 # import datetime
-# import requests
+import requests
 import re
 import pandas as pd
 import numpy as np
@@ -17,7 +17,9 @@ def test(event, context):
         "pageNumber": page_number
     }}
 
-    response = ebay.general_search(keywords="daiwa reel", add_options=add_options)
+    keywords = "leica"
+
+    response = ebay.general_search(keywords=keywords, add_options=add_options)
     items = ebay.get_items(response)
 
     pages = int(ebay.get_total_pages(response))
@@ -41,14 +43,18 @@ def test(event, context):
     names = df.shortTitle
     counts = []
     for name in names:
-        ptn = r"[<>]"
-        name = re.sub(ptn, "", name)
-        try:
-            response = ebay.detail_search(keywords=name)
-            cnt = ebay.get_total_count(response)
-        except:
-            cnt = None
-        counts.append(cnt)
+        # ptn = r"[<>]"
+        # name = re.sub(ptn, "", name)
+        # try:
+        #     response = ebay.detail_search(keywords=name)
+        #     cnt = ebay.get_total_count(response)
+        # except:
+        #     cnt = None
+        # # print(name, cnt)
+        # counts.append(cnt)
+
+        # TEST
+        counts.append(None)
 
     df["TotalCounts"] = counts
 
@@ -56,9 +62,11 @@ def test(event, context):
     df = df[df["country"] == "JP"]
     # 100USD 以上のもの
     # df = df[df["currentPrice"] >= 100]
+    # count数でソート
+    df = df.sort_values(by=["TotalCounts"], ascending=False)
 
     # CSV 出力
-    df.to_csv("daiwa.csv")
+    df.to_csv("sample_leica.csv")
 
     # TODO implement
     return {
@@ -123,11 +131,11 @@ class Ebay:
     config_file = "ebay.yaml"
     _method_names = ("findCompletedItems", "findItemsAdvanced",)
     column_permutations = (
-        "shortTitle", "itemId", "title", "currentPrice", "currency", "country", "primaryCategory.categoryId",
+        "JP_shortTitle", "shortTitle", "itemId", "title", "currentPrice", "currency", "country", "primaryCategory.categoryId",
         "primaryCategory.categoryName", "listingType", "condition"
     )
     property_permutations = (
-        "shortTitle", "itemId", "title", {"sellingStatus": {"currentPrice": "value"}},
+        "JP_shortTitle", "shortTitle", "itemId", "title", {"sellingStatus": {"currentPrice": "value"}},
         {"sellingStatus": {"currentPrice": "_currencyId"}}, "country", {"primaryCategory": "categoryId"},
         {"primaryCategory": "categoryName"}, {"listingInfo": "listingType"}, {"condition": "conditionDisplayName"}
     )
@@ -204,11 +212,17 @@ class Ebay:
         return df
 
     def get_values(self, item):
+        google = Google()
         values = []
 
         def _get_value(key, item):
             if key == "shortTitle":
                 return " ".join(getattr(item, "title", []).split()[:4])
+            if key == "JP_shortTitle":
+                # TEST
+                return None
+                text = " ".join(getattr(item, "title", []).split()[:4])
+                return google.translate(text=text, source="en", target="ja")
             if isinstance(key, str):
                 return getattr(item, key, None)
             if isinstance(key, list):
@@ -236,3 +250,21 @@ class Ebay:
 
     def get_total_pages(self, response):
         return response.reply.paginationOutput.totalPages
+
+
+class Google:
+    # GAS webapp in Translation Project
+    url = "https://script.google.com/macros/s/AKfycbytv3cdchwPyuVI6f9wLtpvSqT_pyfMcEMMhNI9xeGPAWxxtqXu/exec"
+
+    def __init__(self):
+        pass
+
+    def translate(self, text="", source="en", target="ja"):
+        query = "?text=%s&source=%s&target=%s" % (text, source, target,)
+        url = self.url + query
+        response = requests.get(url)
+
+        if response.status_code != 200:
+            raise ConnectionError
+
+        return response.text
