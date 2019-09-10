@@ -14,6 +14,7 @@ nlp = spacy.load('en_core_web_sm')
 
 from gensim.models.phrases import Phrases, Phraser
 import multiprocessing
+
 from gensim.models import Word2Vec
 
 
@@ -36,28 +37,21 @@ def test(event, context):
     rk_item_names = []
     rk_item_price = []
 
-    data = data.assign(rk_title=None)
-
-    data = data.assign(
-        rk_shorTitle=data.apply(lambda x: rakuten.get_items(rakuten.search(google.translate(text=x['shortTitle'])))[0].get("itemName", None), axis=1)
-    )
-    print(data.head())
-    # print(data["shortTitle"])
-    return
+    # data = data.assign(
+    #     rk_itemName=data.apply(lambda x: rakuten.get_items(rakuten.search(google.translate(text=x['shortTitle'])))[0].get("itemName", None), axis=1)
+    # )
+    # data = data.assign(
+    #     rk_itemPrice=data.apply(lambda x: rakuten.get_items(rakuten.search(google.translate(text=x['shortTitle'])))[0].get("itemPrice", None), axis=1)
+    # )
 
     for dt in data["shortTitle"]:
         # TODO:: ハンドリング
         try:
             dt = google.translate(text=dt)
-            print(dt)
             response = rakuten.search(keyword=dt)
             items = rakuten.get_items(response)
-            if any(items):
-                rk_item_names.append(items[0].get("itemName", None))
-                rk_item_price.append(items[0].get("itemPrice", 0))
-            else:
-                rk_item_names.append(None)
-                rk_item_price.append(0)
+            rk_item_names.append(items[0].get("itemName", None))
+            rk_item_price.append(items[0].get("itemPrice", 0))
         except:
             rk_item_names.append(None)
             rk_item_price.append(0)

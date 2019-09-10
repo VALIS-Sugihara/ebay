@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 from ebaysdk.finding import Connection as finding
 from google import Google
@@ -59,11 +60,11 @@ class Ebay:
     config_file = "ebay.yaml"
     _method_names = ("findCompletedItems", "findItemsAdvanced",)
     column_permutations = (
-        "JP_shortTitle", "shortTitle", "itemId", "title", "currentPrice", "currency", "country", "primaryCategory.categoryId",
+        "JP_shortTitle", "shortTitle", "itemId", "title", "viewItemURL", "currentPrice", "currency", "country", "primaryCategory.categoryId",
         "primaryCategory.categoryName", "listingType", "condition"
     )
     property_permutations = (
-        "JP_shortTitle", "shortTitle", "itemId", "title", {"sellingStatus": {"currentPrice": "value"}},
+        "JP_shortTitle", "shortTitle", "itemId", "title", "viewItemURL", {"sellingStatus": {"currentPrice": "value"}},
         {"sellingStatus": {"currentPrice": "_currencyId"}}, "country", {"primaryCategory": "categoryId"},
         {"primaryCategory": "categoryName"}, {"listingInfo": "listingType"}, {"condition": "conditionDisplayName"}
     )
@@ -145,21 +146,22 @@ class Ebay:
         google = Google()
         values = []
 
+        def _get_short_title(item):
+            ptn = r"[^a-zA-Z0-9]"
+            lst = re.sub(ptn, "", getattr(item, "title", [])).lower().split()
+            # キーワードから３単語分抽出
+            try:
+                target = int(lst.index(self._get_keywords()))
+            except:
+                target = 0
+            length = target + 3
+            return " ".join(lst[target:length])
+
         def _get_value(key, item):
             if key == "shortTitle":
-                lst = getattr(item, "title", []).lower().split()
-                # キーワードから３単語分抽出
-                try:
-                    target = int(lst.index(self._get_keywords()))
-                except:
-                    target = 0
-                length = target + 3
-                return " ".join(lst[target:length])
+                return _get_short_title(item)
             if key == "JP_shortTitle":
-                # TEST
-                return None
-                text = " ".join(getattr(item, "title", []).split()[:4])
-                return google.translate(text=text, source="en", target="ja")
+                return google.translate(text=_get_short_title(item), source="en", target="ja")
             if isinstance(key, str):
                 return getattr(item, key, None)
             if isinstance(key, list):

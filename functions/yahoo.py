@@ -44,13 +44,15 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
     def __init__(self):
         pass
 
-    def search(self, keywords=""):
+    def search(self, keywords="", add_option={}):
         url = "https://auctions.yahooapis.jp/AuctionWebService/V2/search"
         item_parameters = {
             'appid': CLIENT_ID,
             # 'output': 'json',
             'query': keywords
         }
+        if any(add_option):
+            item_parameters.update(add_option)
         response = requests.get(url, params=item_parameters)
         self._assert_response(response)
         return response
@@ -95,9 +97,32 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
 
         return response["ResultSet"]["Result"]["Item"]
 
+    def get_total_pages(self, response):
+        response = response.text
 
-yahoo = Yahoo()
-response = yahoo.search(keywords="ライカ")
-items = yahoo.get_items(response)
-df = yahoo.make_dataframe(items)
-df.to_csv("./data/sample_yahoo_leica.csv")
+        # XML to json( dict )
+        response = xmltodict.parse(response)
+        response = json.dumps(response, indent=2)
+        response = json.loads(response)
+
+        return response["ResultSet"]["@totalResultsReturned"]
+
+
+# yahoo = Yahoo()
+#
+# response = yahoo.search(keywords="ライカ")
+# pages = int(yahoo.get_total_pages(response))
+# items = yahoo.get_items(response)
+# df = yahoo.make_dataframe(items)
+#
+# if pages > 1:
+#     for i in range(0, pages):
+#         add_option = {
+#             "page": i + 1
+#         }
+#         print(i+1)
+#         response = yahoo.search(keywords="ライカ", add_option=add_option)
+#         items = yahoo.get_items(response)
+#         df = df.append(yahoo.make_dataframe(items))
+#
+# df.to_csv("./data/sample_yahoo_leica.csv")

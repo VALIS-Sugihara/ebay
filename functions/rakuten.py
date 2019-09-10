@@ -87,11 +87,7 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
 
 
     def get_items(self, response):
-        try:
-            items = response["Items"] if any(response["Items"]) else [{}]
-        except:
-            print(response["Items"])
-            items = [{}]
+        items = response["Items"] if "Items" in response else [{}]
         return items
 
 
@@ -127,8 +123,8 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
         # assert type(response.reply.searchResult.item) == list, print("Invalid Item!! ", response.reply)
 
 
-# rakuten = Rakuten()
-# response = rakuten.search("leica")
-# items = rakuten.get_items(response)
-# df = rakuten.make_dataframe(items)
-# df.to_csv("./data/sample_rakuten.csv")
+rakuten = Rakuten()
+response = rakuten.search("leica")
+items = rakuten.get_items(response)
+df = rakuten.make_dataframe(items)
+df.to_csv("./data/sample_rakuten.csv")

@@ -9,7 +9,7 @@ def test(event, context):
     rakuten = Rakuten()
 
     """
-        STEP 1 : Ebay 検索
+        STEP 1 : キーワード Ebay 検索
     """
     page_number = 1
     add_options = {"paginationInput": {
@@ -39,12 +39,14 @@ def test(event, context):
 
             df = df.append(ebay.make_dataframe(items))
 
-    # *** SearchDetails ***
+    """
+        STEP 2 : キーワード Ebay 検索
+    """
     names = df.shortTitle
     counts = []
     for name in names:
-        ptn = r"[<>]"
-        name = re.sub(ptn, "", name)
+        # ptn = r"[^a-zA-Z0-9]"
+        # name = re.sub(ptn, "", name)
         try:
             response = ebay.detail_search(keywords=name)
             cnt = ebay.get_total_count(response)
@@ -52,9 +54,8 @@ def test(event, context):
             cnt = None
         # print(name, cnt)
         counts.append(cnt)
-
         # TEST
-        counts.append(None)
+        # counts.append(None)
 
     df["TotalCounts"] = counts
 
