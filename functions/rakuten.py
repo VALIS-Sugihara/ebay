@@ -65,13 +65,13 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
         'itemUrl': 'https://item.rakuten.co.jp/mitsuba/leica-q2/'
     }
     """
-    column_permutations = ("itemName", "itemPrice", "shopName", "itemUrl")
-    property_permutations = ("itemName", "itemPrice", "shopName", "itemUrl")
+    column_permutations = ("itemName", "itemPrice", "shopName", "itemUrl", "genreId")
+    property_permutations = ("itemName", "itemPrice", "shopName", "itemUrl", "genreId")
 
     def __init__(self):
         pass
 
-    def search(self, keyword):
+    def search(self, keyword=None, add_options={}):
         url = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
         # item_url = 'https://app.rakuten.co.jp/services/api/IchibaGenre/Search/20140222'
         item_parameters = {
@@ -79,8 +79,11 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
             'format': 'json',
             'formatVersion': 2,
             # 'genreId': 0,
-            "keyword": keyword
+            "keyword": keyword,
+            "page": 1
         }
+        if any(add_options) and isinstance(add_options, dict):
+            item_parameters.update(add_options)
         response = requests.get(url, params=item_parameters)
         response = response.json()
         return response
@@ -104,7 +107,7 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
 
         def _get_value(key, item):
             if isinstance(key, str):
-                return item.get(key, None)
+                return item.get(key, "")
             if isinstance(key, list):
                 return " ".join([item.get(k) for k in key])
             if isinstance(key, dict):
@@ -121,6 +124,13 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
         assert response.status_code == 200, print("Response Error!! ", response.reply.ack)
         # 返却値（item）確認
         # assert type(response.reply.searchResult.item) == list, print("Invalid Item!! ", response.reply)
+
+    def get_total_count(self, response):
+        return response["count"]
+
+    def get_total_pages(self, response):
+        return response["pageCount"]
+
 
 
 rakuten = Rakuten()

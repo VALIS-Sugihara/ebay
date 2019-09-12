@@ -10,6 +10,7 @@ nlp = spacy.load('en_core_web_sm')
 # nlp = spacy.load('en')
 nlp_ginza = spacy.load('ja_ginza_nopn')
 
+
 def compare(en_list, ja_list):
     google = Google()
 
@@ -43,13 +44,13 @@ def compare(en_list, ja_list):
         df = df.append(lst)
 
     df = df.sort_values(by=["score"], ascending=False)
-    df.to_csv("data/similarity.csv")
+    # df.to_csv("data/similarity.csv")
 
-    return True
+    return df
 
 
-ebay_df = pd.read_csv("data/sample_ebay_leica.csv")
-en_list = ebay_df["title"]
+# ebay_df = pd.read_csv("data/sample_ebay_leica.csv")
+# en_list = ebay_df["title"]
 
 # from collections import Counter
 # doc = nlp("".join(en_list))
@@ -59,6 +60,6 @@ en_list = ebay_df["title"]
 # print(common_words)
 # exit()
 
-yahoo_df = pd.read_csv("data/sample_yahoo_leica.csv")
-ja_list = yahoo_df["Title"]
-compare([en_list[0]], ja_list)
+# yahoo_df = pd.read_csv("data/sample_yahoo_leica.csv")
+# ja_list = yahoo_df["Title"]
+# compare([en_list[0]], ja_list)

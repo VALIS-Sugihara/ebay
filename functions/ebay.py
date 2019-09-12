@@ -3,6 +3,11 @@ import pandas as pd
 from ebaysdk.finding import Connection as finding
 from google import Google
 
+# for get_model()
+import urllib3
+import certifi
+from bs4 import BeautifulSoup
+
 
 class Ebay:
     """ response.reply.searchResult.item[0]
@@ -60,7 +65,7 @@ class Ebay:
     config_file = "ebay.yaml"
     _method_names = ("findCompletedItems", "findItemsAdvanced",)
     column_permutations = (
-        "JP_shortTitle", "shortTitle", "itemId", "title", "viewItemURL", "currentPrice", "currency", "country", "primaryCategory.categoryId",
+        "JP_shortTitle", "shortTitle",  "itemId", "title", "viewItemURL", "currentPrice", "currency", "country", "primaryCategory.categoryId",
         "primaryCategory.categoryName", "listingType", "condition"
     )
     property_permutations = (
@@ -147,7 +152,7 @@ class Ebay:
         values = []
 
         def _get_short_title(item):
-            ptn = r"[^a-zA-Z0-9]"
+            ptn = r"[^a-zA-Z0-9\s]"
             lst = re.sub(ptn, "", getattr(item, "title", [])).lower().split()
             # キーワードから３単語分抽出
             try:
@@ -161,6 +166,7 @@ class Ebay:
             if key == "shortTitle":
                 return _get_short_title(item)
             if key == "JP_shortTitle":
+                return None  # TEST
                 return google.translate(text=_get_short_title(item), source="en", target="ja")
             if isinstance(key, str):
                 return getattr(item, key, None)
@@ -176,13 +182,38 @@ class Ebay:
         return values
 
     def _assert_response(self, response):
+        return True
         # 接続確認
         assert response.reply.ack == 'Success', print("Response Error!! ", response.reply.ack)
         # 返却値（item）確認
         assert type(response.reply.searchResult.item) == list, print("Invalid Item!! ", response.reply)
 
     def get_items(self, response):
-        return response.reply.searchResult.item
+        try:
+            items = response.reply.searchResult.item
+        except AttributeError:
+            items = [{}]
+        return items
+
+    def get_model(self, url):
+        # for Series
+        if not isinstance(url, str):
+            url = url.to_list()
+            for u in url:
+                print(u)
+                self.get_model(u)
+        try:
+            http = urllib3.PoolManager(
+                cert_reqs='CERT_REQUIRED',
+                ca_certs=certifi.where())
+            r = http.request('GET', url)
+            soup = BeautifulSoup(r.data, 'html.parser')
+            t = soup.find_all("h2", attrs={"itemprop": "model"})
+            print(t[0].text if any(t) else None)
+            return t[0].text if any(t) else None
+        except:
+            print(None)
+            return None
 
     def get_total_count(self, response):
         return response.reply.paginationOutput.totalEntries
@@ -191,7 +222,19 @@ class Ebay:
         return response.reply.paginationOutput.totalPages
 
     def _set_keywords(self, keywords):
-        self.keywords = keywords
+        self.keywords = keywords.split()[0]
 
     def _get_keywords(self):
         return self.keywords
+
+
+
+# test = pd.read_csv("data/sample_ebay_leica.csv")
+# cat = test["primaryCategory.categoryName"].value_counts()
+# import matplotlib.pyplot as plt
+# import numpy as np
+# # print(cat.to_list())
+# # exit()
+# # plt.bar(np.array([1,2]), np.array([1,5]))
+# plt.bar(cat.index, cat.to_list())
+# plt.show()

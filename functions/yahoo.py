@@ -44,15 +44,18 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
     def __init__(self):
         pass
 
-    def search(self, keywords="", add_option={}):
+    def search(self, query="", add_options={}):
         url = "https://auctions.yahooapis.jp/AuctionWebService/V2/search"
         item_parameters = {
             'appid': CLIENT_ID,
+            'query': query,
+            "page": 1,
+            # "type": "all",  # all（全文一致） or any（部分一致）
+            # "category": {id},
             # 'output': 'json',
-            'query': keywords
         }
-        if any(add_option):
-            item_parameters.update(add_option)
+        if any(add_options) and isinstance(add_options, dict):
+            item_parameters.update(add_options)
         response = requests.get(url, params=item_parameters)
         self._assert_response(response)
         return response

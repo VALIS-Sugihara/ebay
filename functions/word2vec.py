@@ -151,4 +151,73 @@ def training(sentences):
     w2v_model.init_sims(replace=True)
 
 
-test(True, True)
+def frequent_title_in_category(df, category_column):
+    from collections import Counter
+
+    categories = df[category_column].value_counts().index
+    # TODO:: eachClasses
+    for category_name in categories:
+        each_df = df[df[category_column] == category_name]
+        words = " ".join(each_df["title"].to_list())
+        ptn = r"[^a-zA-Z0-9\s]"
+        words = re.sub(ptn, "", words.lower())
+        doc = nlp(words)
+        words = [token.text for token in doc]
+        word_freq = Counter(words)
+        common_words = word_freq.most_common(30)
+
+        yield category_name, common_words
+
+        # import matplotlib.pyplot as plt
+        # words = [x for x, y in common_words]
+        # counts = [y for x, y in common_words]
+        # plt.bar(range(0, len(words)), counts, tick_label=words)
+        # plt.show()
+        #
+        # print(category_name, common_words)
+
+
+def analyze_category():
+    # TEST::
+    df = pd.read_csv("data/sample_ebay_leica.csv")
+    frequency_list = list(frequent_title_in_category(df, "primaryCategory.categoryName"))
+
+    select_columns = ("title", "primaryCategory.categoryId", "primaryCategory.categoryName")
+
+    for c in df.columns:
+        if c not in select_columns:
+            df = df.drop(c, axis=1)
+
+    print(df.head())
+
+    titles = df["title"]
+    categories = []
+    for ttl in titles:
+        top_score = 0
+        top_category = None
+        for lst in frequency_list[0:10]:
+            score = 1  # 減点法
+            category = lst[0]
+            print("CHECK ...", category)
+            # print("words ...", lst[1])
+            total = np.sum([cnt for target, cnt in lst[1]])
+            for target, cnt in lst[1]:
+                if target.lower() not in ttl.lower().split():
+                    score -= cnt / total
+            print(score, top_score)
+            if score > top_score:
+                top_category = lst[0]
+                top_score = score
+        categories.append(top_category)
+
+    df = df.assign(predictCategory=categories)
+
+    df.to_csv("data/sample_ebay_predict.csv")
+
+# test(True, True)
+
+# df = pd.read_csv("data/sample_ebay_leica.csv")
+# frequent_title_in_category(df, "primaryCategory.categoryName")
+analyze_category()
+
+# from sklearn import tree
