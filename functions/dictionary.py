@@ -1,4 +1,5 @@
 import json
+import re
 from google import Google
 google = Google()
 
@@ -11,6 +12,17 @@ class MultiDimensionalArrayEncoder(json.JSONEncoder):
     def encode(self, obj):
         def hint_tuples(item):
             if isinstance(item, tuple):
+                # for bytes
+                bytes_flg = False
+                list_item = []
+                for i in item:
+                    if isinstance(i, bytes):
+                        list_item.append(i.decode())
+                        bytes_flg = True
+                    else:
+                        list_item.append(i)
+                if bytes_flg is True:
+                    item = tuple(list_item)
                 return {'__tuple__': True, 'items': item}
             if isinstance(item, list):
                 return [hint_tuples(e) for e in item]
@@ -67,9 +79,12 @@ class Dictionary:
         text = self.get(word)
         if text is None:
             # en に翻訳
-            value = google.translate(text=word, source=self.lang, target=self.target)
+            ptn = r"[0-9]+"
+            if not re.match(ptn, word):
+                value = google.translate(text=word, source=self.lang, target=self.target)
+            else:
+                value = word
             self.set(word, value)
-            print(word, value)
             return value
         else:
             return text
@@ -86,11 +101,6 @@ class FrequentDictionary(Dictionary):
         return r.smembers(brand+":"+self.key)
 
     def set_frequency(self, brand, key, value):
+        print(value)
         value = self.to_json(value)
         r.sadd(brand+":"+self.key+":"+key, value)
-
-
-# fd = FrequentDictionary()
-# print(dir(fd))
-# print(fd.get_frequency())
-print(r.keys())

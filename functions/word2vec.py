@@ -183,6 +183,11 @@ def frequent_title_in_category(df, column_names):
         common_words = word_freq.most_common(30)
 
         # 頻出リストに追加
+        print("================")
+        print(category_name, common_words)
+        print(type(category_name), type(common_words))
+        print("================")
+        # return
         fd.set_frequency(brand="ebay", key=category_name, value=common_words)
 
         yield category_name, common_words
