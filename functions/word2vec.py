@@ -1,22 +1,26 @@
 import time
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+
 import spacy
 import re
 from collections import defaultdict  # For word frequency
+
 from google import Google
 from rakuten import Rakuten
+
+import redis
+# Redis に接続します
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
 nlp = spacy.load('en_core_web_sm')
 
-
 from gensim.models.phrases import Phrases, Phraser
 import multiprocessing
-
 from gensim.models import Word2Vec
-
 
 keywords = "leica"
 
@@ -151,20 +155,35 @@ def training(sentences):
     w2v_model.init_sims(replace=True)
 
 
-def frequent_title_in_category(df, category_column):
+def frequent_title_in_category(df, column_names):
+    """
+    df のタイトル
+    :param df:
+    :param column_names:
+    :return:
+    """
     from collections import Counter
+    from dictionary import FrequentDictionary
+    fd = FrequentDictionary()
 
-    categories = df[category_column].value_counts().index
+    categories = df[column_names[1]].value_counts().index
+    print(categories)
     # TODO:: eachClasses
     for category_name in categories:
-        each_df = df[df[category_column] == category_name]
-        words = " ".join(each_df["title"].to_list())
+        each_df = df[df[column_names[1]] == category_name]
+        all_texts = each_df[column_names[0]].to_list()
+        words = " ".join(all_texts)
         ptn = r"[^a-zA-Z0-9\s]"
         words = re.sub(ptn, "", words.lower())
         doc = nlp(words)
-        words = [token.text for token in doc]
+
+        # 翻訳リストに追加 & return
+        words = [fd.register(token.text.strip()) for token in doc]
         word_freq = Counter(words)
         common_words = word_freq.most_common(30)
+
+        # 頻出リストに追加
+        fd.set_frequency(brand="ebay", key=category_name, value=common_words)
 
         yield category_name, common_words
 
@@ -177,20 +196,30 @@ def frequent_title_in_category(df, category_column):
         # print(category_name, common_words)
 
 
-def analyze_category():
+def analyze_category(brand_name="ebay"):
+    KEYWORDS = "nikon"  # TEST
+
+    # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
+    column_names = {
+        "ebay": ("title", "primaryCategory.categoryName", "primaryCategory.categoryId",),
+        "yahoo": ("Title", "CategoryId",)
+    }
+
     # TEST::
-    df = pd.read_csv("data/sample_ebay_leica.csv")
-    frequency_list = list(frequent_title_in_category(df, "primaryCategory.categoryName"))
+    df = pd.read_csv("data/sample_%s_%s.csv" % (brand_name, KEYWORDS,))
+    frequency_list = list(frequent_title_in_category(df, column_names[brand_name]))
 
-    select_columns = ("title", "primaryCategory.categoryId", "primaryCategory.categoryName")
+    select_columns = list(column_names[brand_name])
 
-    for c in df.columns:
-        if c not in select_columns:
-            df = df.drop(c, axis=1)
+    # for c in df.columns:
+    #     if c not in select_columns:
+    #         df = df.drop(c, axis=1)
+
+    df = df[select_columns]
 
     print(df.head())
 
-    titles = df["title"]
+    titles = column_names[brand_name][0]
     categories = []
     for ttl in titles:
         top_score = 0
@@ -198,26 +227,27 @@ def analyze_category():
         for lst in frequency_list[0:10]:
             score = 1  # 減点法
             category = lst[0]
-            print("CHECK ...", category)
             # print("words ...", lst[1])
             total = np.sum([cnt for target, cnt in lst[1]])
             for target, cnt in lst[1]:
                 if target.lower() not in ttl.lower().split():
                     score -= cnt / total
-            print(score, top_score)
             if score > top_score:
                 top_category = lst[0]
                 top_score = score
+        print(ttl, top_category)
         categories.append(top_category)
 
     df = df.assign(predictCategory=categories)
 
-    df.to_csv("data/sample_ebay_predict.csv")
+    df.to_csv("data/sample_%s_predict.csv" % (brand_name,))
 
 # test(True, True)
 
 # df = pd.read_csv("data/sample_ebay_leica.csv")
 # frequent_title_in_category(df, "primaryCategory.categoryName")
-analyze_category()
+analyze_category(brand_name="ebay")
 
 # from sklearn import tree
+
+

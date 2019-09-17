@@ -6,7 +6,7 @@ from rakuten import Rakuten
 from yahoo import Yahoo
 
 
-def ebay(event, context):
+def ebay_to_df(event, context):
     ebay = Ebay()
 
     """
@@ -34,52 +34,63 @@ def ebay(event, context):
     # Get All Pages.
     if pages > 1:
         for i in range(1, pages):
-            add_options = {"paginationInput": {
-                "entriesPerPage": 100,
-                "pageNumber": i + 1
-            }}
+            if i < 50:  # TEST:: < 50p
+                add_options = {"paginationInput": {
+                    "entriesPerPage": 100,
+                    "pageNumber": i + 1
+                }}
 
-            response = ebay.general_search(keywords=keywords, add_options=add_options)
-            items = ebay.get_items(response)
+                response = ebay.general_search(keywords=keywords, add_options=add_options)
+                items = ebay.get_items(response)
 
-            if not any(items):
-                break
+                if not any(items):
+                    break
 
-            df = df.append(ebay.make_dataframe(items))
+                df = df.append(ebay.make_dataframe(items))
 
-            print(df.tail())
-
-    # CSV 出力
-    df.to_csv("./data/sample_ebay_detail_%s.csv" % (keywords,))
-
-    """
-        STEP 2 : キーワード Ebay 検索
-    """
-    # names = df.shortTitle
-    # counts = []
-    # for name in names:
-    #     try:
-    #         response = ebay.detail_search(keywords=name)
-    #         cnt = ebay.get_total_count(response)
-    #     except:
-    #         cnt = None
-    #     print(name, cnt)
-    #     counts.append(cnt)
-    #
-    # df["TotalCounts"] = counts
+                print(df.tail())
 
     # JP産のもの
     df = df[df["country"] == "JP"]
     # 100USD 以上のもの
     # df = df[df["currentPrice"] >= 100]
-    # count数でソート
-    # df = df.sort_values(by=["TotalCounts"], ascending=False)
 
     # CSV 出力
     df.to_csv("./data/sample_ebay_detail_%s.csv" % (keywords,))
 
     # モデル取得
-    df = df.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
+    # df = df.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
+    view_item_urls = df["viewItemURL"]
+    url_list = []
+    for url in view_item_urls:
+        url_list.append(ebay.get_model(url))
+    df["model"] = url_list
+
+    print(df.head())
+
+    """
+        STEP 2 : キーワード Ebay 検索
+    """
+    s_titles = df.shortTitle
+    models = df.model
+    category_ids = df["primaryCategory.categoryId"]
+
+    counts = []
+    for title, model, category_id in zip(s_titles, models, category_ids):
+        try:
+            name = model if model is not None else title
+            add_options = {"categoryId": category_id}
+            response = ebay.detail_search(keywords=name, add_options=add_options)
+            cnt = ebay.get_total_count(response)
+            print(name, cnt)
+        except:
+            cnt = None
+        counts.append(cnt)
+
+    df["TotalCounts"] = counts
+
+    # count数でソート
+    df = df.sort_values(by=["TotalCounts"], ascending=False)
 
     # CSV 出力
     df.to_csv("./data/sample_ebay_detail_%s_model.csv" % (keywords,))
@@ -89,6 +100,12 @@ def ebay(event, context):
         'statusCode': 200,
         'body': json.dumps('Hello from Lambda!')
     }
+
+
+def ebay_market_price(df):
+    keywords = "nikon"
+    df = df.groupby(["model", "primaryCategory.categoryId"], as_index=False).mean()
+    df.to_csv("data/ebay_market_price_%s.csv" % (keywords,))
 
 
 def rakuten(event, context):
@@ -177,8 +194,6 @@ def yahoo(event, context):
         "page": page_number
     }
 
-    # keywords = "daiwa"
-    # query = "ニコン"
     query = event["query"]
 
     response = yahoo.search(query=query, add_options=add_options)
@@ -245,34 +260,40 @@ def yahoo(event, context):
 
 
 # ebay(True, True)
+# df = pd.read_csv("data/sample_ebay_detail_nikon_model.csv")
+# ebay_market_price(df)
 
-ebay = Ebay()
-yahoo = Yahoo()
-df_ebay = pd.read_csv("data/sample_ebay_detail_nikon.csv")
-df_ebay = pd.read_csv("data/sample_ebay_detail_nikon.csv")
-import similarity
+yahoo({"query": "nikon"}, True)
 
-columns = ["en", "ja2en", "ja", "en2ja", "score", "score_en", "score_ja"]
-df_similarity = pd.DataFrame(columns=columns)
 
-for i in range(0, len(df_ebay)):
-    colum = df_ebay.loc[i]
-    print(colum["title"])
-    if colum["model"] is not None:
-        query = "Nikon %s" % (colum["model"])
-        event = {"query": query}
-        df_yahoo = yahoo(event, True)
-        print(df_yahoo.head())
+# ebay = Ebay()
+# yahoo = Yahoo()
+# df_ebay = pd.read_csv("data/sample_ebay_detail_nikon.csv")
+# df_ebay = pd.read_csv("data/sample_ebay_detail_nikon.csv")
+# import similarity
+#
+# columns = ["en", "ja2en", "ja", "en2ja", "score", "score_en", "score_ja"]
+# df_similarity = pd.DataFrame(columns=columns)
+#
+# for i in range(0, len(df_ebay)):
+#     colum = df_ebay.loc[i]
+#     print(colum["title"])
+#     if colum["model"] is not None:
+#         query = "Nikon %s" % (colum["model"])
+#         event = {"query": query}
+#         df_yahoo = yahoo(event, True)
+#         print(df_yahoo.head())
+#
+#         en_list = [colum["title"]]
+#         ja_list = df_yahoo["Title"]
+#         df = similarity.compare(en_list, ja_list)
+#         df_similarity.append(df.loc[0])
+#         print(df_similarity.head())
+#         exit()
+# df_ebay = df_ebay.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
+# print(df_ebay.head())
+# df_ebay.to_csv("data/sample_ebay_detail_nikon_model.csv")
 
-        en_list = [colum["title"]]
-        ja_list = df_yahoo["Title"]
-        df = similarity.compare(en_list, ja_list)
-        df_similarity.append(df.loc[0])
-        print(df_similarity.head())
-        exit()
-df_ebay = df_ebay.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
-print(df_ebay.head())
-df_ebay.to_csv("data/sample_ebay_detail_nikon_model.csv")
 
 
 

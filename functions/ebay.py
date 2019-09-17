@@ -209,8 +209,8 @@ class Ebay:
             r = http.request('GET', url)
             soup = BeautifulSoup(r.data, 'html.parser')
             t = soup.find_all("h2", attrs={"itemprop": "model"})
-            print(t[0].text if any(t) else None)
-            return t[0].text if any(t) else None
+            print(t[0].text if any(t) and isinstance(t, list) else None)
+            return t[0].text if any(t) and isinstance(t, list) else None
         except:
             print(None)
             return None
