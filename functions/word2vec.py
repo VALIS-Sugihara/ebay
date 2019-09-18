@@ -326,51 +326,6 @@ def each_category_and_score(df, brand_name="ebay"):
 
 # analyze_category(brand_name="ebay")
 
-# 機械学習ライブラリ「Scikit-learn」のインポート
-from sklearn.preprocessing import LabelEncoder
-# 新しい書き方
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix
-df = pd.read_csv("data/sample_ebay_predict.csv")
-df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"] )
-df = df[["score", "result"]]
-# 文字列から数値へ変換
-labelencoder=LabelEncoder()
-df['result'] = labelencoder.fit_transform(df['result'])
-print(df.head())
-print(df["result"].value_counts())
-# 訓練データとテストデータへスプリット
-train_set, test_set = train_test_split(df, test_size = 0.2, random_state = 42)
-# 訓練データの特徴量とターゲットを切り分ける
-X_train = train_set.drop('result',axis=1)
-y_train = train_set['result'].copy()
-
-# テストデータの特徴量とターゲットを切り分ける
-X_test = test_set.drop('result',axis=1)
-y_test = test_set['result'].copy()
-
-# 訓練データをロジスティック回帰のモデルへ訓練
-logclassifier = LogisticRegression()
-logclassifier.fit(X_train, y_train)
-
-# 訓練ずみモデルを使って訓練データから予測する
-y_pred = logclassifier.predict(X_train)
-
-# 混同行列を作成
-cnf_matrix = confusion_matrix(y_train,y_pred)
-print(cnf_matrix)
-# 正解率を計算する
-print(accuracy_score(y_train, y_pred))
-
-# 訓練ずみモデルからテストデータを使って予測
-y_pred_test = logclassifier.predict(X_test)
-# 混同行列を作成
-cnf_matrix_test = confusion_matrix(y_test,y_pred_test)
-print(cnf_matrix_test)
-# 正解率を計算する
-print(accuracy_score(y_test, y_pred_test))
 
 
 # import statsmodels.api as sm
@@ -381,3 +336,133 @@ print(accuracy_score(y_test, y_pred_test))
 #
 # # 訓練ずみモデルの詳細確認
 # result.summary()
+
+
+def logistic_regression(df):
+    ## データ処理と可視化のためのライブラリー
+    import numpy as np
+    import seaborn as sns
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    # 機械学習ライブラリ「Scikit-learn」のインポート
+    from sklearn.preprocessing import LabelEncoder
+    from sklearn.model_selection import train_test_split
+    from sklearn.feature_selection import RFE
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import accuracy_score
+    from sklearn.metrics import confusion_matrix
+
+    df2 = pd.read_csv("data/sample_ebay_predict.csv")
+    predicts = df2[["predictCategory"]]
+    df["predictCategory"] = predicts
+    df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"])
+    # 文字列から数値へ変換
+    labelencoder = LabelEncoder()
+    df['result'] = labelencoder.fit_transform(df['result'])
+
+    columns = ['result', 'Lenses', 'Film Cameras',
+       'Viewfinders & Eyecups', 'Digital Cameras', 'Flashes', 'Lens Hoods',
+       'Lens Caps', 'Battery Grips', 'Lens Adapters, Mounts & Tubes',
+       'Cases, Bags & Covers']
+
+    df = df[columns]
+
+    # 訓練データ（80%）とテストデータ（20%)へスプリット
+    train_set, test_set = train_test_split(df, test_size=0.2, random_state=42)
+
+    # 特徴量（x）とターゲット（y）へ切り分け
+    X_train = train_set.drop('result',axis=1).fillna(0)
+    y_train = train_set['result'].copy().fillna(0)
+
+    X_test = test_set.drop('result',axis=1).fillna(0)
+    y_test = test_set['result'].copy().fillna(0)
+
+    # RFEを使って特徴選択を行います
+    logreg = LogisticRegression()
+    rfe = RFE(logreg, 5, verbose=1)
+    rfe = rfe.fit(X_train, y_train)
+
+    # 選択した特徴量を切り分けます
+    X_train = X_train[X_train.columns[rfe.support_]]
+    X_test = X_test[X_test.columns[rfe.support_]]
+
+    # データフレームの確認
+    print(X_train.head())
+
+    # 訓練データを使ってモデルの訓練
+    logclassifier = LogisticRegression()
+    logclassifier.fit(X_train, y_train)
+
+    # 訓練データの予測
+    y_pred = logclassifier.predict(X_train)
+
+    # 混同行列で訓練データの予測結果を評価
+    cnf_matrix = confusion_matrix(y_train, y_pred)
+    print(cnf_matrix)
+
+    # 正解率を算出
+    print(accuracy_score(y_train, y_pred))
+
+    # テストデータの予測
+    y_pred_test = logclassifier.predict(X_test)
+
+    # 混同行列（テストデータ）
+    cnf_matrix_test = confusion_matrix(y_test, y_pred_test)
+    print(cnf_matrix_test)
+
+    # 正解率（テストデータ）
+    print(accuracy_score(y_test, y_pred_test))
+
+
+df = pd.read_csv("data/category_ebay.csv", encoding='cp932')
+logistic_regression(df)
+
+
+
+def test():
+    # 機械学習ライブラリ「Scikit-learn」のインポート
+    from sklearn.preprocessing import LabelEncoder
+    # 新しい書き方
+    from sklearn.model_selection import train_test_split
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import accuracy_score
+    from sklearn.metrics import confusion_matrix
+    df = pd.read_csv("data/sample_ebay_predict.csv")
+    df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"])
+    df = df[["score", "result"]]
+    # 文字列から数値へ変換
+    labelencoder = LabelEncoder()
+    df['result'] = labelencoder.fit_transform(df['result'])
+    print(df.head())
+    print(df["result"].value_counts())
+    # 訓練データとテストデータへスプリット
+    train_set, test_set = train_test_split(df, test_size=0.2, random_state=42)
+    # 訓練データの特徴量とターゲットを切り分ける
+    X_train = train_set.drop('result', axis=1)
+    y_train = train_set['result'].copy()
+
+    # テストデータの特徴量とターゲットを切り分ける
+    X_test = test_set.drop('result', axis=1)
+    y_test = test_set['result'].copy()
+
+    # 訓練データをロジスティック回帰のモデルへ訓練
+    logclassifier = LogisticRegression()
+    logclassifier.fit(X_train, y_train)
+
+    # 訓練ずみモデルを使って訓練データから予測する
+    y_pred = logclassifier.predict(X_train)
+
+    # 混同行列を作成
+    cnf_matrix = confusion_matrix(y_train, y_pred)
+    print(cnf_matrix)
+    # 正解率を計算する
+    print(accuracy_score(y_train, y_pred))
+
+    # 訓練ずみモデルからテストデータを使って予測
+    y_pred_test = logclassifier.predict(X_test)
+    # 混同行列を作成
+    cnf_matrix_test = confusion_matrix(y_test, y_pred_test)
+    print(cnf_matrix_test)
+    # 正解率を計算する
+    print(accuracy_score(y_test, y_pred_test))
