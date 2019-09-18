@@ -134,7 +134,22 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
 
 
 
+df = pd.read_csv("data/sample_yahoo_predict.csv")
+category_ids = df.groupby(["CategoryId"], as_index=False).mean()["CategoryId"]
 yahoo = Yahoo()
-response = yahoo.get_categories("2084261684")
-results = yahoo.get_results(response)
-print(results)
+
+df2 = pd.read_csv("data/sample_yahoo_predict.csv")
+names = {}
+for id in category_ids:
+    response = yahoo.get_categories(id)
+    results = yahoo.get_results(response)
+    if "CategoryName" in results:
+        name = results["CategoryName"]
+        names[id] = name
+    else:
+        names[id] = None
+
+print(df2.head())
+df2 = df2.assign(CategoryName=df2.apply(lambda x: names[x["CategoryId"]], axis=1))
+
+df2.to_csv("data/sample_yahoo_predict_name.csv", encoding='utf_8_sig')

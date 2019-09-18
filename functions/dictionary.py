@@ -101,6 +101,9 @@ class FrequentDictionary(Dictionary):
         return r.smembers(brand+":"+self.key)
 
     def set_frequency(self, brand, key, value):
-        print(value)
         value = self.to_json(value)
         r.sadd(brand+":"+self.key+":"+key, value)
+
+
+# print(r.keys("ebay*"))
+print(r.smembers("ebay:common_words:Film Cameras"))

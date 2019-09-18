@@ -46,7 +46,7 @@ def compare(en_list, ja_list):
     df = df.sort_values(by=["score"], ascending=False)
     # df.to_csv("data/similarity.csv")
 
-    return df
+    return score
 
 
 # ebay_df = pd.read_csv("data/sample_ebay_leica.csv")

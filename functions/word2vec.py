@@ -185,12 +185,11 @@ def frequent_title_in_category(df, column_names):
         # 頻出リストに追加
         print("================")
         print(category_name, common_words)
-        print(type(category_name), type(common_words))
         print("================")
         # return
         fd.set_frequency(brand="ebay", key=category_name, value=common_words)
 
-        yield category_name, common_words
+        yield (category_name, common_words,)
 
         # import matplotlib.pyplot as plt
         # words = [x for x, y in common_words]
@@ -214,18 +213,72 @@ def analyze_category(brand_name="ebay"):
     df = pd.read_csv("data/sample_%s_%s.csv" % (brand_name, KEYWORDS,))
     frequency_list = list(frequent_title_in_category(df, column_names[brand_name]))
 
-    select_columns = list(column_names[brand_name])
-
     # for c in df.columns:
     #     if c not in select_columns:
     #         df = df.drop(c, axis=1)
 
-    df = df[select_columns]
+    # TEST::
+    # brand_name="yahoo"
+    # df = pd.read_csv("data/sample_%s_%s.csv" % ("yahoo", KEYWORDS,))
+    from dictionary import Dictionary
+    d = Dictionary()
 
-    print(df.head())
-
-    titles = column_names[brand_name][0]
+    titles = df[column_names[brand_name][0]]
     categories = []
+    scores = []
+    for ttl in titles:
+        # en に翻訳
+        # ttl = d.register(ttl)
+        # ttl = ttl.decode() if isinstance(ttl, bytes) else ttl
+        top_score = 0
+        top_category = None
+        for lst in frequency_list[0:10]:
+            score = 1  # 減点法
+            category = lst[0]
+            # print("words ...", lst[1])
+            total = np.sum([cnt for target, cnt in lst[1]])
+            for target, cnt in lst[1]:
+                target = target.decode() if isinstance(target, bytes) else target
+
+                doc = nlp(ttl)
+                # 翻訳リストに追加 & return
+                words = [token.text.strip() for token in doc]
+
+                # if target.lower() not in re.split(r"[,\s.]", ttl.lower()):
+                if target.lower() not in words:
+                    score -= cnt / total
+            if score > top_score:
+                print(top_score, top_category)
+                top_category = lst[0]
+                top_score = score
+        print(ttl, top_category)
+        categories.append(top_category)
+        scores.append(top_score)
+
+    df = df.assign(predictCategory=categories)
+    df = df.assign(score=scores)
+
+    df.to_csv("data/sample_%s_predict.csv" % (brand_name,))
+
+
+def each_category_and_score(df, brand_name="ebay"):
+    KEYWORDS = "nikon"  # TEST
+
+    # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
+    column_names = {
+        "ebay": ("title", "primaryCategory.categoryName", "primaryCategory.categoryId",),
+        "yahoo": ("Title", "CategoryId",)
+    }
+
+    frequency_list = list(frequent_title_in_category(df, column_names[brand_name]))
+
+    # TEST::
+    titles = df[column_names[brand_name][0]]
+
+    # 初期化
+    categories = {}
+    for lst in frequency_list[0:10]:
+        categories[lst[0]] = []
     for ttl in titles:
         top_score = 0
         top_category = None
@@ -235,24 +288,96 @@ def analyze_category(brand_name="ebay"):
             # print("words ...", lst[1])
             total = np.sum([cnt for target, cnt in lst[1]])
             for target, cnt in lst[1]:
-                if target.lower() not in ttl.lower().split():
+                target = target.decode() if isinstance(target, bytes) else target
+
+                doc = nlp(ttl)
+                # 翻訳リストに追加 & return
+                words = [token.text.strip() for token in doc]
+
+                # if target.lower() not in re.split(r"[,\s.]", ttl.lower()):
+                if target.lower() not in words:
                     score -= cnt / total
+
+            categories[category].append(score)
+
             if score > top_score:
+                print(top_score, top_category)
                 top_category = lst[0]
                 top_score = score
-        print(ttl, top_category)
-        categories.append(top_category)
 
-    df = df.assign(predictCategory=categories)
+    print(categories)
+    for category, score in categories.items():
+        df[category] = score
 
-    df.to_csv("data/sample_%s_predict.csv" % (brand_name,))
+    print(df.head())
+
+    return df
+
+
+
+
 
 # test(True, True)
 
+
+
 # df = pd.read_csv("data/sample_ebay_leica.csv")
 # frequent_title_in_category(df, "primaryCategory.categoryName")
-analyze_category(brand_name="ebay")
 
-# from sklearn import tree
+# analyze_category(brand_name="ebay")
+
+# 機械学習ライブラリ「Scikit-learn」のインポート
+from sklearn.preprocessing import LabelEncoder
+# 新しい書き方
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+df = pd.read_csv("data/sample_ebay_predict.csv")
+df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"] )
+df = df[["score", "result"]]
+# 文字列から数値へ変換
+labelencoder=LabelEncoder()
+df['result'] = labelencoder.fit_transform(df['result'])
+print(df.head())
+print(df["result"].value_counts())
+# 訓練データとテストデータへスプリット
+train_set, test_set = train_test_split(df, test_size = 0.2, random_state = 42)
+# 訓練データの特徴量とターゲットを切り分ける
+X_train = train_set.drop('result',axis=1)
+y_train = train_set['result'].copy()
+
+# テストデータの特徴量とターゲットを切り分ける
+X_test = test_set.drop('result',axis=1)
+y_test = test_set['result'].copy()
+
+# 訓練データをロジスティック回帰のモデルへ訓練
+logclassifier = LogisticRegression()
+logclassifier.fit(X_train, y_train)
+
+# 訓練ずみモデルを使って訓練データから予測する
+y_pred = logclassifier.predict(X_train)
+
+# 混同行列を作成
+cnf_matrix = confusion_matrix(y_train,y_pred)
+print(cnf_matrix)
+# 正解率を計算する
+print(accuracy_score(y_train, y_pred))
+
+# 訓練ずみモデルからテストデータを使って予測
+y_pred_test = logclassifier.predict(X_test)
+# 混同行列を作成
+cnf_matrix_test = confusion_matrix(y_test,y_pred_test)
+print(cnf_matrix_test)
+# 正解率を計算する
+print(accuracy_score(y_test, y_pred_test))
 
 
+# import statsmodels.api as sm
+# # statsmodelを利用してロジスティック回帰のモデルを構築
+# mushroom2 = sm.add_constant(df)
+# logit = sm.Logit(mushroom2['class'], mushroom2[['const','bruises_t']])
+# result = logit.fit()
+#
+# # 訓練ずみモデルの詳細確認
+# result.summary()
