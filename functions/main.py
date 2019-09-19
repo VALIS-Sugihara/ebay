@@ -1,12 +1,15 @@
 import json
 import re
+import datetime
 import pandas as pd
 from ebay import Ebay
 from rakuten import Rakuten
 from yahoo import Yahoo
 
+TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
 
-def ebay_to_df(event, context):
+
+def ebay2df(event, context):
     ebay = Ebay()
 
     """
@@ -56,7 +59,7 @@ def ebay_to_df(event, context):
     # df = df[df["currentPrice"] >= 100]
 
     # CSV 出力
-    df.to_csv("./data/sample_ebay_detail_%s.csv" % (keywords,))
+    df.to_csv("./data/ebay_detail_%s_%s.csv" % (keywords, TODAY,))
 
     # モデル取得
     # df = df.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
@@ -93,7 +96,7 @@ def ebay_to_df(event, context):
     df = df.sort_values(by=["TotalCounts"], ascending=False)
 
     # CSV 出力
-    df.to_csv("./data/sample_ebay_detail_%s_model.csv" % (keywords,))
+    df.to_csv("./data/ebay_detail_%s_model_%s.csv" % (keywords, TODAY,))
 
     # TODO implement
     return {
@@ -108,7 +111,7 @@ def ebay_market_price(df):
     df.to_csv("data/ebay_market_price_%s.csv" % (keywords,))
 
 
-def rakuten(event, context):
+def rakuten2df(event, context):
     rakuten = Rakuten()
 
     """
@@ -168,7 +171,7 @@ def rakuten(event, context):
 
     # CSV 出力
     # df.to_csv("./data/sample_rakuten_%s.csv" % (keyword,), encoding="s-jis")
-    df.to_csv("./data/sample_rakuten_%s.csv" % (keyword,))
+    df.to_csv("./data/sample_rakuten_%s_%s.csv" % (keyword, TODAY,))
 
     # モデル取得
     # df = df.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
@@ -183,7 +186,7 @@ def rakuten(event, context):
     }
 
 
-def yahoo(event, context):
+def yahoo2df(event, context):
     yahoo = Yahoo()
 
     """
@@ -248,7 +251,7 @@ def yahoo(event, context):
     # df = df.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
 
     # CSV 出力
-    df.to_csv("./data/sample_yahoo_%s.csv" % (query,))
+    df.to_csv("./data/svn_yahoo_%s_%s.csv" % (query, TODAY,))
 
     return df
 
@@ -259,12 +262,18 @@ def yahoo(event, context):
     }
 
 
+ebay2df(True, True)
 # ebay(True, True)
 # df = pd.read_csv("data/sample_ebay_detail_nikon_model.csv")
 # ebay_market_price(df)
 
-yahoo({"query": "nikon"}, True)
-
+# yahoo2df({"query": "nikon"}, True)
+# df = pd.read_csv("data/svn_yahoo_nikon.csv")
+# from google import Google
+# google = Google()
+# df = df.assign(en_Title=df.apply(lambda x: google.translate(text=x["Title"], source="ja", target="en"), axis=1))
+# df.to_csv("data/svn_yahoo_nikon_en.csv")
+# print(df.head())
 
 # ebay = Ebay()
 # yahoo = Yahoo()

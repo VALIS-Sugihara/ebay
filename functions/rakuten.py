@@ -133,8 +133,8 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
 
 
 
-rakuten = Rakuten()
-response = rakuten.search("leica")
-items = rakuten.get_items(response)
-df = rakuten.make_dataframe(items)
-df.to_csv("./data/sample_rakuten.csv")
+# rakuten = Rakuten()
+# response = rakuten.search("leica")
+# items = rakuten.get_items(response)
+# df = rakuten.make_dataframe(items)
+# df.to_csv("./data/sample_rakuten.csv")

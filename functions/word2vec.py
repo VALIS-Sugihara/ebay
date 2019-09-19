@@ -1,16 +1,13 @@
 import time
-
+import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
 import spacy
 import re
 from collections import defaultdict  # For word frequency
-
 from google import Google
 from rakuten import Rakuten
-
 import redis
 # Redis に接続します
 r = redis.Redis(host='localhost', port=6379, db=0)
@@ -23,6 +20,8 @@ import multiprocessing
 from gensim.models import Word2Vec
 
 keywords = "leica"
+
+TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
 
 
 def test(event, context):
@@ -177,6 +176,12 @@ def frequent_title_in_category(df, column_names):
         words = re.sub(ptn, "", words.lower())
         doc = nlp(words)
 
+        # 名詞、固有名詞、数字以外を除去
+        words = []
+        for token in doc:
+            if token.pos_ in ("PROPN", "NOUN", "NUM",):
+                words.append(token.text)
+
         # 翻訳リストに追加 & return
         words = [fd.register(token.text.strip()) for token in doc]
         word_freq = Counter(words)
@@ -206,7 +211,7 @@ def analyze_category(brand_name="ebay"):
     # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
     column_names = {
         "ebay": ("title", "primaryCategory.categoryName", "primaryCategory.categoryId",),
-        "yahoo": ("Title", "CategoryId",)
+        "yahoo": ("en_Title", "CategoryId",)
     }
 
     # TEST::
@@ -218,12 +223,13 @@ def analyze_category(brand_name="ebay"):
     #         df = df.drop(c, axis=1)
 
     # TEST::
-    # brand_name="yahoo"
-    # df = pd.read_csv("data/sample_%s_%s.csv" % ("yahoo", KEYWORDS,))
+    brand_name="yahoo"
+    df = pd.read_csv("data/svn_%s_%s_en.csv" % ("yahoo", KEYWORDS,))
     from dictionary import Dictionary
     d = Dictionary()
 
     titles = df[column_names[brand_name][0]]
+
     categories = []
     scores = []
     for ttl in titles:
@@ -248,9 +254,9 @@ def analyze_category(brand_name="ebay"):
                 if target.lower() not in words:
                     score -= cnt / total
             if score > top_score:
-                print(top_score, top_category)
                 top_category = lst[0]
                 top_score = score
+                print(top_score, top_category)
         print(ttl, top_category)
         categories.append(top_category)
         scores.append(top_score)
@@ -258,7 +264,7 @@ def analyze_category(brand_name="ebay"):
     df = df.assign(predictCategory=categories)
     df = df.assign(score=scores)
 
-    df.to_csv("data/sample_%s_predict.csv" % (brand_name,))
+    df.to_csv("data/%s_predict_%s.csv" % (brand_name, TODAY,))
 
 
 def each_category_and_score(df, brand_name="ebay"):
@@ -267,16 +273,18 @@ def each_category_and_score(df, brand_name="ebay"):
     # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
     column_names = {
         "ebay": ("title", "primaryCategory.categoryName", "primaryCategory.categoryId",),
-        "yahoo": ("Title", "CategoryId",)
+        "yahoo": ("en_Title", "CategoryId",)
     }
 
-    frequency_list = list(frequent_title_in_category(df, column_names[brand_name]))
+    frequency_df = pd.read_csv("data/ebay_detail_nikon_model_20190919.csv")
+    frequency_list = list(frequent_title_in_category(frequency_df, column_names[brand_name]))
 
     # TEST::
+    # brand_name = "yahoo"
     titles = df[column_names[brand_name][0]]
 
     # 初期化
-    categories = {}
+    categories = {"predict_category": []}
     for lst in frequency_list[0:10]:
         categories[lst[0]] = []
     for ttl in titles:
@@ -284,6 +292,7 @@ def each_category_and_score(df, brand_name="ebay"):
         top_category = None
         for lst in frequency_list[0:10]:
             score = 1  # 減点法
+            score = 0  # 加点法
             category = lst[0]
             # print("words ...", lst[1])
             total = np.sum([cnt for target, cnt in lst[1]])
@@ -295,15 +304,21 @@ def each_category_and_score(df, brand_name="ebay"):
                 words = [token.text.strip() for token in doc]
 
                 # if target.lower() not in re.split(r"[,\s.]", ttl.lower()):
-                if target.lower() not in words:
-                    score -= cnt / total
+                # 減点法
+                # if target.lower() not in words:
+                #     score -= cnt / total
+                # 加点法
+                if target.lower() in words:
+                    score += cnt / total
 
             categories[category].append(score)
 
             if score > top_score:
-                print(top_score, top_category)
+                # print(top_score, top_category)
                 top_category = lst[0]
                 top_score = score
+        print(ttl, top_category)
+        categories["predict_category"].append(top_category)
 
     print(categories)
     for category, score in categories.items():
@@ -315,7 +330,9 @@ def each_category_and_score(df, brand_name="ebay"):
 
 
 
-
+df = pd.read_csv("data/ebay_detail_nikon_model_20190919.csv")
+each_category_and_score(df)
+df.to_csv("data/ebay_categories_%s_NOUN.csv" % (TODAY,))
 
 # test(True, True)
 
@@ -326,7 +343,9 @@ def each_category_and_score(df, brand_name="ebay"):
 
 # analyze_category(brand_name="ebay")
 
-
+# df = pd.read_csv("data/ebay_detail_nikon_20190919.csv")
+# df = each_category_and_score(df)
+# df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
 
 # import statsmodels.api as sm
 # # statsmodelを利用してロジスティック回帰のモデルを構築
@@ -415,8 +434,8 @@ def logistic_regression(df):
     print(accuracy_score(y_test, y_pred_test))
 
 
-df = pd.read_csv("data/category_ebay.csv", encoding='cp932')
-logistic_regression(df)
+# df = pd.read_csv("data/category_ebay.csv", encoding='cp932')
+# logistic_regression(df)
 
 
 
@@ -466,3 +485,224 @@ def test():
     print(cnf_matrix_test)
     # 正解率を計算する
     print(accuracy_score(y_test, y_pred_test))
+
+
+def svn(df):
+    # ライブラリのインポート
+    import pandas as pd
+    import sklearn
+    from sklearn import datasets
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn import svm
+    from sklearn.metrics import confusion_matrix
+    from sklearn.metrics import accuracy_score
+    from sklearn.preprocessing import LabelEncoder
+
+    # df2 = pd.read_csv("data/sample_ebay_predict.csv")
+    # predicts = df2[["predictCategory"]]
+    # df["predictCategory"] = predicts
+    # df = df.assign(result=lambda x: x["predict_category"] == x["primaryCategory.categoryName"])
+
+    # 文字列から数値へ変換
+    indexes = [
+        "Lenses",
+        "Film Cameras",
+        "Viewfinders & Eyecups",
+        "Digital Cameras",
+        "Flashes",
+        "Lens Hoods",
+        "Battery Grips",
+        "Lens Adapters, Mounts & Tubes",
+        "Film Backs & Holders",
+        "Straps & Hand Grips",
+    ]
+
+    # labelencoder = LabelEncoder()
+    df = df.fillna("Lenses")
+    df = df.assign(result=df.apply(lambda x: indexes.index(x['predict_category']), axis=1))
+
+    # 文字列から数値へ変換
+    # labelencoder = LabelEncoder()
+    # df['result'] = labelencoder.fit_transform(df['result'])
+
+    columns = [
+        "result",
+        "Lenses",
+        "Film Cameras",
+        "Viewfinders & Eyecups",
+        "Digital Cameras",
+        "Flashes",
+        "Lens Hoods",
+        "Battery Grips",
+        "Lens Adapters, Mounts & Tubes",
+        "Film Backs & Holders",
+        "Straps & Hand Grips",
+    ]
+
+    df = df[columns]
+
+    print(df.head())
+
+    df2 = pd.read_csv("data/yahoo_categories_20190919.csv")
+    # labelencoder = LabelEncoder()
+    df2 = df2.fillna("Lenses")
+    df2 = df2.assign(result=df2.apply(lambda x: indexes.index(x['predict_category']), axis=1))
+    df2 = df2[columns]
+
+
+    # 訓練データ/テストデータの分割
+    train_set, test_set = train_test_split(df, test_size = 0.2, random_state = 42)
+    train_set2, test_set2 = train_test_split(df2, test_size = 0.2, random_state = 42)
+
+    # 訓練データの特徴量/ターゲットの切り分け
+    X_train = train_set.drop('result', axis=1).fillna(0)
+    y_train = train_set['result'].copy().fillna(0)
+
+    # テストデータの特徴量/ターゲットの切り分け
+    X_test = test_set2.drop('result', axis=1).fillna(0)
+    y_test = test_set2['result'].copy().fillna(0)
+
+    # Scikit-learnを利用して特徴量の正規化を行う
+    StandardScaler = StandardScaler()
+    X_train_norm = StandardScaler.fit_transform(X_train)
+    X_test_norm = StandardScaler.fit_transform(X_test)
+
+    # 最初の5行を表示
+    print(X_train.head())
+
+    # 正規化後のsepal length(cm）の特徴量の平均
+    print(X_train_norm[:, 0].mean())
+
+    # 正規化後のsepal length(cm）の特徴量の標準偏差
+    print(X_train_norm[:, 0].std())
+
+    # SVMのモデル訓練
+    clf = svm.SVC()
+    clf.fit(X_train_norm, y_train)
+
+    # 訓練データを使って予測
+    y_pred_train = clf.predict(X_train_norm)
+    print(y_pred_train)
+
+    # テストデータを使って予測
+    y_pred_test = clf.predict(X_test_norm)
+    print(y_pred_test)
+
+    # 訓練データの混同行列
+    print(confusion_matrix(y_train, y_pred_train))
+
+    # 訓練データの正解率
+    print(accuracy_score(y_train, y_pred_train))
+
+    # テストデータの混同行列
+    print(confusion_matrix(y_test, y_pred_test))
+
+    # テストデータでの正解率
+    print(accuracy_score(y_test, y_pred_test))
+
+
+# df = pd.read_csv("data/ebay_categories_20190919.csv")
+# svn(df)
+
+
+def k_means(df):
+    # ライブラリのインポート
+    import pandas as pd
+    import sklearn
+    from sklearn import datasets
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn import svm
+    from sklearn.metrics import confusion_matrix
+    from sklearn.metrics import accuracy_score
+    from sklearn.preprocessing import LabelEncoder
+    from sklearn.cluster import KMeans
+
+    indexes = [
+        "Lenses",
+        "Film Cameras",
+        "Viewfinders & Eyecups",
+        "Digital Cameras",
+        "Flashes",
+        "Lens Hoods",
+        "Battery Grips",
+        "Lens Adapters, Mounts & Tubes",
+        "Film Backs & Holders",
+        "Straps & Hand Grips",
+    ]
+    df = df.fillna("Lenses")
+
+    df = df.assign(result=df.apply(lambda x: indexes.index(x['predict_category']), axis=1))
+
+    n_clusters = len(indexes)
+
+    sklearn.cluster.KMeans(n_clusters=n_clusters, init='k-means++', n_init=10, max_iter=300,
+                           tol=0.0001, precompute_distances='auto', verbose=0,
+                           random_state=None, copy_x=True, n_jobs=1)
+
+    columns = [
+        # "result",
+        "Lenses",
+        "Film Cameras",
+        "Viewfinders & Eyecups",
+        "Digital Cameras",
+        "Flashes",
+        "Lens Hoods",
+        "Battery Grips",
+        "Lens Adapters, Mounts & Tubes",
+        "Film Backs & Holders",
+        "Straps & Hand Grips",
+    ]
+
+    df = df[columns]
+
+    print(df.head())
+
+    array = np.array([
+        # df['result'].tolist(),
+        df['Lenses'].tolist(),
+        df['Film Cameras'].tolist(),
+        df['Viewfinders & Eyecups'].tolist(),
+        df['Digital Cameras'].tolist(),
+        df['Flashes'].tolist(),
+        df['Lens Hoods'].tolist(),
+        df['Lens Hoods'].tolist(),
+        df['Battery Grips'].tolist(),
+        df['Lens Adapters, Mounts & Tubes'].tolist(),
+        df['Film Backs & Holders'].tolist(),
+        df['Straps & Hand Grips'].tolist(),
+    ], np.float64)
+
+    array = array.T
+    print(array)
+
+    pred = KMeans(n_clusters=n_clusters).fit_predict(array)
+    print(pred)
+    df["cluster_id"] = pred
+    print(df.head())
+    print(df["cluster_id"].value_counts())
+
+
+    # 可視化（積み上げ棒グラフ）
+    # import matplotlib.pyplot as plt
+
+    clusterinfo = pd.DataFrame()
+    for i in range(n_clusters):
+        clusterinfo['cluster' + str(i)] = df[df['cluster_id'] == i].mean()
+    clusterinfo = clusterinfo.drop('cluster_id')
+
+    my_plot = clusterinfo.T.plot(kind='bar', stacked=True, title="Mean Value of 4 Clusters")
+    my_plot.set_xticklabels(my_plot.xaxis.get_majorticklabels(), rotation=0)
+
+
+
+# df = pd.read_csv("data/ebay_categories_20190919.csv")
+# k_means(df)
+
+# df = pd.read_csv("data/ebay_categories_20190919.csv")
+# titles = df["title"]
+# doc = nlp(titles[0])
+# print(dir(doc))
+# for d in doc:
+#     print((d.text, d.pos_, d.dep_))
