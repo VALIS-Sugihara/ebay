@@ -404,9 +404,9 @@ def each_word_and_count(df, brand_name="ebay"):
 # df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
 # each_category_and_score(df)
 # df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
-df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
-each_word_and_count(df)
-df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
+# df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
+# each_word_and_count(df)
+# df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
 
 # test(True, True)
 
@@ -446,30 +446,48 @@ def logistic_regression(df):
     from sklearn.metrics import accuracy_score
     from sklearn.metrics import confusion_matrix
 
-    df2 = pd.read_csv("data/sample_ebay_predict.csv")
-    predicts = df2[["predictCategory"]]
-    df["predictCategory"] = predicts
-    df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"])
+    # df2 = pd.read_csv("data/sample_ebay_predict.csv")
+    # predicts = df2[["predictCategory"]]
+    # df["predictCategory"] = predicts
+    # df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"])
     # 文字列から数値へ変換
+    # labelencoder = LabelEncoder()
+    # df['result'] = labelencoder.fit_transform(df['result'])
+
+    # 特徴量をダミー変数化
+    dfcol = df.columns[17:]
+    print(dfcol)
+    df1 = df[dfcol]
+    print(df1.head())
+    # df2 = pd.get_dummies(df["primaryCategory.categoryName"], prefix='primaryCategory', drop_first=True)
+    # print(df2.head())
+    # return
+    # df2 = pd.get_dummies(df, columns=df[dfcol], drop_first=True)
+    # print(df2.describe())
+    # ターゲットの値を文字列から数値へ変換
     labelencoder = LabelEncoder()
-    df['result'] = labelencoder.fit_transform(df['result'])
+    df['primaryCategory.categoryName'] = labelencoder.fit_transform(df['primaryCategory.categoryName'])
+    df1["primaryCategory"] = df['primaryCategory.categoryName']
+    df = df1
+    print(df1.head())
+    print(df1.tail())
 
-    columns = ['result', 'Lenses', 'Film Cameras',
-       'Viewfinders & Eyecups', 'Digital Cameras', 'Flashes', 'Lens Hoods',
-       'Lens Caps', 'Battery Grips', 'Lens Adapters, Mounts & Tubes',
-       'Cases, Bags & Covers']
+    # columns = ['result', 'Lenses', 'Film Cameras',
+    #    'Viewfinders & Eyecups', 'Digital Cameras', 'Flashes', 'Lens Hoods',
+    #    'Lens Caps', 'Battery Grips', 'Lens Adapters, Mounts & Tubes',
+    #    'Cases, Bags & Covers']
 
-    df = df[columns]
+    # df = df[columns]
 
     # 訓練データ（80%）とテストデータ（20%)へスプリット
     train_set, test_set = train_test_split(df, test_size=0.2, random_state=42)
 
     # 特徴量（x）とターゲット（y）へ切り分け
-    X_train = train_set.drop('result',axis=1).fillna(0)
-    y_train = train_set['result'].copy().fillna(0)
+    X_train = train_set.drop('primaryCategory',axis=1).fillna(0)
+    y_train = train_set['primaryCategory'].copy().fillna(0)
 
-    X_test = test_set.drop('result',axis=1).fillna(0)
-    y_test = test_set['result'].copy().fillna(0)
+    X_test = test_set.drop('primaryCategory',axis=1).fillna(0)
+    y_test = test_set['primaryCategory'].copy().fillna(0)
 
     # RFEを使って特徴選択を行います
     logreg = LogisticRegression()
@@ -508,8 +526,8 @@ def logistic_regression(df):
     print(accuracy_score(y_test, y_pred_test))
 
 
-# df = pd.read_csv("data/category_ebay.csv", encoding='cp932')
-# logistic_regression(df)
+df = pd.read_csv("data/ebay_categories_20190920.csv")
+logistic_regression(df)
 
 
 
@@ -772,7 +790,6 @@ def k_means(df):
 
     my_plot = clusterinfo.T.plot(kind='bar', stacked=True, title="Mean Value of 4 Clusters")
     my_plot.set_xticklabels(my_plot.xaxis.get_majorticklabels(), rotation=0)
-
 
 
 # df = pd.read_csv("data/ebay_categories_20190919.csv")
