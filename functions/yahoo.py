@@ -4,6 +4,7 @@ import json
 import requests
 import pandas as pd
 import xmltodict
+import re
 
 """
 Client ID：
@@ -71,6 +72,12 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
         values = []
 
         def _get_value(key, item):
+            if key == "ItemUrl":
+                ptn = r".+\?auctionID=(.+)"
+                id_ = re.match(ptn, item.get(key, ""))
+                base_url = "https://page.auctions.yahoo.co.jp/jp/auction/"
+                url = base_url + id_.groups()[0] if id_ is not None else base_url
+                return url
             if isinstance(key, str):
                 return item.get(key, None)
             if isinstance(key, list):

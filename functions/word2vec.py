@@ -329,10 +329,84 @@ def each_category_and_score(df, brand_name="ebay"):
     return df
 
 
+def each_word_and_count(df, brand_name="ebay"):
+    KEYWORDS = "nikon"  # TEST
 
-df = pd.read_csv("data/ebay_detail_nikon_model_20190919.csv")
-each_category_and_score(df)
-df.to_csv("data/ebay_categories_%s_NOUN.csv" % (TODAY,))
+    # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
+    column_names = {
+        "ebay": ("title", "primaryCategory.categoryName", "primaryCategory.categoryId",),
+        "yahoo": ("en_Title", "CategoryId",)
+    }
+
+    frequency_df = pd.read_csv("data/ebay_detail_nikon_model_20190919.csv")
+    frequency_list = list(frequent_title_in_category(frequency_df, column_names[brand_name]))
+
+    # TEST::
+    # brand_name = "yahoo"
+    titles = df[column_names[brand_name][0]]
+
+    # 初期化
+    categories = {"predict_category": []}
+    for lst in frequency_list[0:10]:
+        # categories[lst[0]] = []
+        for target, cnt in lst[1]:
+            target = target.decode() if isinstance(target, bytes) else target
+            categories[lst[0]+"_"+target.lower()] = []
+    for ttl in titles:
+        top_score = 0
+        top_category = None
+        for lst in frequency_list[0:10]:
+            score = 1  # 減点法
+            # score = 0  # 加点法
+            category = lst[0]
+            # print("words ...", lst[1])
+            total = np.sum([cnt for target, cnt in lst[1]])
+            for target, cnt in lst[1]:
+                target = target.decode() if isinstance(target, bytes) else target
+
+                doc = nlp(ttl)
+                # 翻訳リストに追加 & return
+                words = [token.text.strip() for token in doc]
+
+                # if target.lower() not in re.split(r"[,\s.]", ttl.lower()):
+                # 減点法
+                if target.lower() not in words:
+                    score -= cnt / total
+                    categories["%s_%s" % (category, target.lower(),)].append(0)
+                else:
+                    categories["%s_%s" % (category, target.lower(), )].append(1)
+
+                # 加点法
+                # if target.lower() in words:
+                #     score += cnt / total
+                #     categories["%s_%s" % (category, target.lower(), )].append(1)
+                # else:
+                #     categories["%s_%s" % (category, target.lower(), )].append(0)
+
+            # categories[category].append(score)
+
+            if score > top_score:
+                # print(top_score, top_category)
+                top_category = lst[0]
+                top_score = score
+        print(ttl, top_category)
+        categories["predict_category"].append(top_category)
+
+    print(categories)
+    for category, score in categories.items():
+        df[category] = score
+
+    print(df.head())
+
+    return df
+
+
+# df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
+# each_category_and_score(df)
+# df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
+df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
+each_word_and_count(df)
+df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
 
 # test(True, True)
 
@@ -520,6 +594,10 @@ def svn(df):
 
     # labelencoder = LabelEncoder()
     df = df.fillna("Lenses")
+    dummies = pd.get_dummies(df["predict_category"], prefix="predict_category")
+    df = pd.merge(df, dummies, right_index=True, left_index=True)
+    print(df.head())
+    return
     df = df.assign(result=df.apply(lambda x: indexes.index(x['predict_category']), axis=1))
 
     # 文字列から数値へ変換

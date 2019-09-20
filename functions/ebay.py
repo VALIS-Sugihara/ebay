@@ -8,6 +8,10 @@ import urllib3
 import certifi
 from bs4 import BeautifulSoup
 
+import spacy
+# 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
+nlp = spacy.load('en_core_web_sm')
+
 
 class Ebay:
     """ response.reply.searchResult.item[0]
@@ -153,14 +157,23 @@ class Ebay:
 
         def _get_short_title(item):
             ptn = r"[^a-zA-Z0-9\s]"
-            lst = re.sub(ptn, "", getattr(item, "title", [])).lower().split()
-            # キーワードから３単語分抽出
-            try:
-                target = int(lst.index(self._get_keywords()))
-            except:
-                target = 0
-            length = target + 3
-            return " ".join(lst[target:length])
+            title = re.sub(ptn, "", getattr(item, "title", ""))
+            doc = nlp(title)
+            # 名詞、固有名詞、数字以外を除去したカラムを作成
+            words = []
+            for token in doc:
+                if token.pos_ in ("PROPN", "NOUN", "NUM",):
+                    words.append(token.text)
+            return " ".join(words)
+
+            # lst = re.sub(ptn, "", getattr(item, "title", [])).lower().split()
+            # # キーワードから３単語分抽出
+            # try:
+            #     target = int(lst.index(self._get_keywords()))
+            # except:
+            #     target = 0
+            # length = target + 3
+            # return " ".join(lst[target:length])
 
         def _get_value(key, item):
             if key == "shortTitle":

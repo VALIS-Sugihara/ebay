@@ -5,6 +5,11 @@ import pandas as pd
 from ebay import Ebay
 from rakuten import Rakuten
 from yahoo import Yahoo
+from google import Google
+import spacy
+# 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
+nlp = spacy.load('en_core_web_sm')
+nlp_ginza = spacy.load('ja_ginza_nopn')
 
 TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
 
@@ -13,7 +18,7 @@ def ebay2df(event, context):
     ebay = Ebay()
 
     """
-        STEP 1 : キーワード Ebay 検索
+    STEP 1 : キーワード Ebay 検索
     """
     page_number = 1
     add_options = {"paginationInput": {
@@ -220,38 +225,43 @@ def yahoo2df(event, context):
             df = df.append(yahoo.make_dataframe(items))
 
     """
-        STEP 2 : キーワード Ebay 検索
+        STEP 2 : 英翻訳、shortTitlte
     """
-    # names = df.shortTitle
-    # counts = []
-    # for name in names:
-    #     try:
-    #         response = ebay.detail_search(keywords=name)
-    #         cnt = ebay.get_total_count(response)
-    #     except:
-    #         cnt = None
-    #     print(name, cnt)
-    #     counts.append(cnt)
-        # TEST
-        # counts.append(None)
+    def get_en_title(title):
+        google = Google()
+        return google.translate(text=title, source="ja", target="en")
 
-    # df["TotalCounts"] = counts
+    df["en_Title"] = df.Title.apply(get_en_title)
 
-    # JP産のもの
-    # df = df[df["country"] == "JP"]
-    # 100USD 以上のもの
-    # df = df[df["currentPrice"] >= 100]
-    # count数でソート
-    # df = df.sort_values(by=["TotalCounts"], ascending=False)
+    def get_en_short_title(en_title):
+        ptn = r"[^a-zA-Z0-9\s]"
+        title = re.sub(ptn, "", en_title)
+        doc = nlp(title)
+        # 名詞、固有名詞、数字以外を除去したカラムを作成
+        words = []
+        for token in doc:
+            if token.pos_ in ("PROPN", "NOUN", "NUM",):
+                words.append(token.text)
+        return " ".join(words)
+
+    df["en_short_Title"] = df.en_Title.apply(get_en_short_title)
+
+    def get_ja_short_title(title):
+        # ptn = r"[^a-zA-Z0-9\s]"
+        # title = re.sub(ptn, "", title)
+        doc = nlp_ginza(title)
+        # 名詞、固有名詞、数字以外を除去したカラムを作成
+        words = []
+        for token in doc:
+            print(token.pos_)
+            if token.pos_ in ("PROPN", "NOUN", "NUM",):
+                words.append(token.text)
+        return " ".join(words)
+
+    df["short_Title"] = df.Title.apply(get_ja_short_title)
 
     # CSV 出力
-    # df.to_csv("./data/sample_rakuten_%s.csv") % (keyword,)
-
-    # モデル取得
-    # df = df.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
-
-    # CSV 出力
-    df.to_csv("./data/svn_yahoo_%s_%s.csv" % (query, TODAY,))
+    df.to_csv("./data/yahoo_%s_%s.csv" % (query, TODAY,))
 
     return df
 
@@ -262,13 +272,56 @@ def yahoo2df(event, context):
     }
 
 
-ebay2df(True, True)
+# ebay2df(True, True)
 # ebay(True, True)
 # df = pd.read_csv("data/sample_ebay_detail_nikon_model.csv")
 # ebay_market_price(df)
 
 # yahoo2df({"query": "nikon"}, True)
-# df = pd.read_csv("data/svn_yahoo_nikon.csv")
+
+def simlarity(ebay_df, yahoo_df):
+    """ 相関性の高いレコードを連結 """
+    ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
+    yahoo_df = pd.read_csv("data/yahoo_nikon_20190920_ja.csv")
+
+    shortTitles = ebay_df["shortTitle"]
+    en_short_Titles = yahoo_df["en_short_Title"]
+    df = pd.DataFrame(columns=yahoo_df.columns)
+    for sttl in shortTitles:
+        sttl_doc = nlp(sttl)
+        arr = [sttl_doc.similarity(nlp(ensttl)) for ensttl in en_short_Titles]
+        max_index = arr.index(max(arr))
+        print(max_index)
+        df = df.append(yahoo_df.loc[max_index:max_index])
+
+    df = df.reset_index(drop=True)
+    print(df.head())
+    print(df.shape, ebay_df.shape)
+    df3 = pd.concat([ebay_df, df], axis=1)
+    print(df3.head())
+    df3.to_csv("data/ebay_yahoo_detail_%s.csv" % (TODAY,))
+
+
+df = pd.read_csv("data/ebay_yahoo_detail_20190920.csv")
+
+def change_url(text):
+    ptn = r".+\?auctionID=(.+)"
+    id_ = re.match(ptn, text)
+    base_url = "https://page.auctions.yahoo.co.jp/jp/auction/"
+    url = base_url + id_.groups()[0] if id_ is not None else base_url
+    return url
+
+df["ItemUrl"] = df.ItemUrl.apply(change_url)
+df.to_csv("data/ebay_yahoo_detail_20190920_b.csv")
+# df2["en_short_Title"]
+
+# print(df1.head())
+# print(df2.head())
+
+
+# df3 = pd.concat([df1, df2], axis=1)
+
+
 # from google import Google
 # google = Google()
 # df = df.assign(en_Title=df.apply(lambda x: google.translate(text=x["Title"], source="ja", target="en"), axis=1))
@@ -302,10 +355,3 @@ ebay2df(True, True)
 # df_ebay = df_ebay.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
 # print(df_ebay.head())
 # df_ebay.to_csv("data/sample_ebay_detail_nikon_model.csv")
-
-
-
-
-# yahoo = Yahoo()
-# query =
-# yahoo.search(query="Nikon")
