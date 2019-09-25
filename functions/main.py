@@ -282,18 +282,21 @@ def similarity(ebay_df, yahoo_df):
     en_short_Titles = yahoo_df["en_short_Title"]
     df = pd.DataFrame(columns=yahoo_df.columns)
     for i, sttl in enumerate(shortTitles):
-        sttl_doc = nlp(sttl)
-        model_doc = nlp(str(models[i])) if models[i] is not None else ""
-        # shortTitle: en_short_Title, model: en_short_Title の相関平均で比較する
-        arr = []
-        for ensttl in en_short_Titles:
-            score1 = sttl_doc.similarity(nlp(str(ensttl)))
-            score2 = model_doc.similarity(nlp(str(ensttl)))
-            arr.append(np.mean([score1, score2]))
+        try:
+            sttl_doc = nlp(sttl)
+            model_doc = nlp(str(models[i])) if models[i] is not None else nlp(str(models[i]))
+            # shortTitle: en_short_Title, model: en_short_Title の相関平均で比較する
+            arr = []
+            for ensttl in en_short_Titles:
+                score1 = sttl_doc.similarity(nlp(str(ensttl)))
+                score2 = model_doc.similarity(nlp(str(ensttl)))
+                arr.append(np.mean([score1, score2]))
 
-        max_index = arr.index(max(arr))
-        print(max_index)
-        df = df.append(yahoo_df.loc[max_index:max_index])
+            max_index = arr.index(max(arr))
+            print(max_index)
+            df = df.append(yahoo_df.loc[max_index:max_index])
+        except:
+            continue
 
     df = df.reset_index(drop=True)
     print(df.head())
