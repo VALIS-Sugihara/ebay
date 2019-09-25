@@ -4,10 +4,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import spacy
+import pickle
 import re
 from collections import defaultdict  # For word frequency
 from google import Google
 from rakuten import Rakuten
+# ハイパーパラメータチューニング
+from sklearn.model_selection import GridSearchCV
 import redis
 # Redis に接続します
 r = redis.Redis(host='localhost', port=6379, db=0)
@@ -338,7 +341,7 @@ def each_word_and_count(df, brand_name="ebay"):
         "yahoo": ("en_Title", "CategoryId",)
     }
 
-    frequency_df = pd.read_csv("data/ebay_detail_nikon_model_20190919.csv")
+    frequency_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
     frequency_list = list(frequent_title_in_category(frequency_df, column_names[brand_name]))
 
     # TEST::
@@ -401,36 +404,6 @@ def each_word_and_count(df, brand_name="ebay"):
     return df
 
 
-# df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
-# each_category_and_score(df)
-# df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
-# df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
-# each_word_and_count(df)
-# df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
-
-# test(True, True)
-
-
-
-# df = pd.read_csv("data/sample_ebay_leica.csv")
-# frequent_title_in_category(df, "primaryCategory.categoryName")
-
-# analyze_category(brand_name="ebay")
-
-# df = pd.read_csv("data/ebay_detail_nikon_20190919.csv")
-# df = each_category_and_score(df)
-# df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
-
-# import statsmodels.api as sm
-# # statsmodelを利用してロジスティック回帰のモデルを構築
-# mushroom2 = sm.add_constant(df)
-# logit = sm.Logit(mushroom2['class'], mushroom2[['const','bruises_t']])
-# result = logit.fit()
-#
-# # 訓練ずみモデルの詳細確認
-# result.summary()
-
-
 def logistic_regression(df):
     ## データ処理と可視化のためのライブラリー
     import numpy as np
@@ -491,7 +464,7 @@ def logistic_regression(df):
 
     # RFEを使って特徴選択を行います
     logreg = LogisticRegression()
-    rfe = RFE(logreg, 5, verbose=1)
+    rfe = RFE(logreg, 50, verbose=1)
     rfe = rfe.fit(X_train, y_train)
 
     # 選択した特徴量を切り分けます
@@ -526,60 +499,11 @@ def logistic_regression(df):
     print(accuracy_score(y_test, y_pred_test))
 
 
-df = pd.read_csv("data/ebay_categories_20190920.csv")
-logistic_regression(df)
+# df = pd.read_csv("data/ebay_categories_20190920.csv")
+# logistic_regression(df)
 
 
-
-def test():
-    # 機械学習ライブラリ「Scikit-learn」のインポート
-    from sklearn.preprocessing import LabelEncoder
-    # 新しい書き方
-    from sklearn.model_selection import train_test_split
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import accuracy_score
-    from sklearn.metrics import confusion_matrix
-    df = pd.read_csv("data/sample_ebay_predict.csv")
-    df = df.assign(result=lambda x: x["predictCategory"] == x["primaryCategory.categoryName"])
-    df = df[["score", "result"]]
-    # 文字列から数値へ変換
-    labelencoder = LabelEncoder()
-    df['result'] = labelencoder.fit_transform(df['result'])
-    print(df.head())
-    print(df["result"].value_counts())
-    # 訓練データとテストデータへスプリット
-    train_set, test_set = train_test_split(df, test_size=0.2, random_state=42)
-    # 訓練データの特徴量とターゲットを切り分ける
-    X_train = train_set.drop('result', axis=1)
-    y_train = train_set['result'].copy()
-
-    # テストデータの特徴量とターゲットを切り分ける
-    X_test = test_set.drop('result', axis=1)
-    y_test = test_set['result'].copy()
-
-    # 訓練データをロジスティック回帰のモデルへ訓練
-    logclassifier = LogisticRegression()
-    logclassifier.fit(X_train, y_train)
-
-    # 訓練ずみモデルを使って訓練データから予測する
-    y_pred = logclassifier.predict(X_train)
-
-    # 混同行列を作成
-    cnf_matrix = confusion_matrix(y_train, y_pred)
-    print(cnf_matrix)
-    # 正解率を計算する
-    print(accuracy_score(y_train, y_pred))
-
-    # 訓練ずみモデルからテストデータを使って予測
-    y_pred_test = logclassifier.predict(X_test)
-    # 混同行列を作成
-    cnf_matrix_test = confusion_matrix(y_test, y_pred_test)
-    print(cnf_matrix_test)
-    # 正解率を計算する
-    print(accuracy_score(y_test, y_pred_test))
-
-
-def svn(df):
+def svm(df, grid_search_flg=True):
     # ライブラリのインポート
     import pandas as pd
     import sklearn
@@ -596,110 +520,185 @@ def svn(df):
     # df["predictCategory"] = predicts
     # df = df.assign(result=lambda x: x["predict_category"] == x["primaryCategory.categoryName"])
 
-    # 文字列から数値へ変換
-    indexes = [
-        "Lenses",
-        "Film Cameras",
-        "Viewfinders & Eyecups",
-        "Digital Cameras",
-        "Flashes",
-        "Lens Hoods",
-        "Battery Grips",
-        "Lens Adapters, Mounts & Tubes",
-        "Film Backs & Holders",
-        "Straps & Hand Grips",
-    ]
-
-    # labelencoder = LabelEncoder()
-    df = df.fillna("Lenses")
-    dummies = pd.get_dummies(df["predict_category"], prefix="predict_category")
-    df = pd.merge(df, dummies, right_index=True, left_index=True)
-    print(df.head())
-    return
-    df = df.assign(result=df.apply(lambda x: indexes.index(x['predict_category']), axis=1))
+    # df_origin = df
 
     # 文字列から数値へ変換
+    # predict_types = df["predict_category"].value_counts().index.to_list()
+
     # labelencoder = LabelEncoder()
-    # df['result'] = labelencoder.fit_transform(df['result'])
+    # df = df.fillna("")
+    # dummies = pd.get_dummies(df["predict_category"], prefix="predict_category")
+    # print(dummies.head())
+    # print(dummies.columns)
+    # df = pd.merge(df, dummies, right_index=True, left_index=True)
+    # df = df.assign(result=df.apply(lambda x: predict_types.index(x['predict_category']), axis=1))
+    # results = df["result"]
+    # indexes = df.index.to_list()
+    # print(indexes)
 
-    columns = [
-        "result",
-        "Lenses",
-        "Film Cameras",
-        "Viewfinders & Eyecups",
-        "Digital Cameras",
-        "Flashes",
-        "Lens Hoods",
-        "Battery Grips",
-        "Lens Adapters, Mounts & Tubes",
-        "Film Backs & Holders",
-        "Straps & Hand Grips",
-    ]
+    # # 文字列から数値へ変換
+    # # labelencoder = LabelEncoder()
+    # # df['result'] = labelencoder.fit_transform(df['result'])
+    #
+    # columns = [
+    #     "result",
+    # ] + indexes
+    #
+    # df = df[columns]
+    #
+    # print(df.head())
+    #
+    # df2 = pd.read_csv("data/yahoo_categories_20190919.csv")
+    # # labelencoder = LabelEncoder()
+    # df2 = df2.fillna("Lenses")
+    # df2 = df2.assign(result=df2.apply(lambda x: indexes.index(x['predict_category']), axis=1))
+    # df2 = df2[columns]
 
-    df = df[columns]
-
-    print(df.head())
-
-    df2 = pd.read_csv("data/yahoo_categories_20190919.csv")
-    # labelencoder = LabelEncoder()
-    df2 = df2.fillna("Lenses")
-    df2 = df2.assign(result=df2.apply(lambda x: indexes.index(x['predict_category']), axis=1))
-    df2 = df2[columns]
-
+    # 特徴量をダミー変数化
+    dfcol = df.columns[17:]
+    print(dfcol)
+    df1 = df[dfcol]
+    print(df1.head())
+    # df2 = pd.get_dummies(df["primaryCategory.categoryName"], prefix='primaryCategory', drop_first=True)
+    # print(df2.head())
+    # return
+    # df2 = pd.get_dummies(df, columns=df[dfcol], drop_first=True)
+    # print(df2.describe())
+    # ターゲットの値を文字列から数値へ変換
+    labelencoder = LabelEncoder()
+    df1['primaryCategory'] = labelencoder.fit_transform(df['primaryCategory.categoryName'])
+    # df1["primaryCategory"] = df['primaryCategory.categoryName']
+    # df = df1
+    print(df1.head())
+    print(df1.tail())
+    print(df1.columns.to_list())
 
     # 訓練データ/テストデータの分割
-    train_set, test_set = train_test_split(df, test_size = 0.2, random_state = 42)
-    train_set2, test_set2 = train_test_split(df2, test_size = 0.2, random_state = 42)
+    train_set, test_set = train_test_split(df1, test_size = 0.2, random_state = 42)
+    # train_set2, test_set2 = train_test_split(df2, test_size = 0.2, random_state = 42)
 
     # 訓練データの特徴量/ターゲットの切り分け
-    X_train = train_set.drop('result', axis=1).fillna(0)
-    y_train = train_set['result'].copy().fillna(0)
+    X_train = train_set.drop('primaryCategory', axis=1).fillna(0)
+    y_train = train_set['primaryCategory'].copy().fillna(0)
 
     # テストデータの特徴量/ターゲットの切り分け
-    X_test = test_set2.drop('result', axis=1).fillna(0)
-    y_test = test_set2['result'].copy().fillna(0)
+    X_test = test_set.drop('primaryCategory', axis=1).fillna(0)
+    y_test = test_set['primaryCategory'].copy().fillna(0)
 
     # Scikit-learnを利用して特徴量の正規化を行う
-    StandardScaler = StandardScaler()
-    X_train_norm = StandardScaler.fit_transform(X_train)
-    X_test_norm = StandardScaler.fit_transform(X_test)
+    # StandardScaler = StandardScaler()
+    # X_train_norm = StandardScaler.fit_transform(X_train)
+    # X_test_norm = StandardScaler.fit_transform(X_test)
 
     # 最初の5行を表示
     print(X_train.head())
+    print(X_test.head())
 
     # 正規化後のsepal length(cm）の特徴量の平均
-    print(X_train_norm[:, 0].mean())
+    # print(X_train_norm[:, 0].mean())
 
     # 正規化後のsepal length(cm）の特徴量の標準偏差
-    print(X_train_norm[:, 0].std())
+    # print(X_train_norm[:, 0].std())
 
-    # SVMのモデル訓練
-    clf = svm.SVC()
-    clf.fit(X_train_norm, y_train)
+    if grid_search_flg is False:
+        # SVMのモデル訓練
+        clf = svm.SVC()
+        clf.fit(X_train, y_train)
 
-    # 訓練データを使って予測
-    y_pred_train = clf.predict(X_train_norm)
-    print(y_pred_train)
+        # 訓練データを使って予測
+        y_pred_train = clf.predict(X_train)
+        print(y_pred_train)
 
-    # テストデータを使って予測
-    y_pred_test = clf.predict(X_test_norm)
-    print(y_pred_test)
+        # テストデータを使って予測
+        y_pred_test = clf.predict(X_test)
+        print(y_pred_test)
 
-    # 訓練データの混同行列
-    print(confusion_matrix(y_train, y_pred_train))
+        # 訓練データの混同行列
+        print(confusion_matrix(y_train, y_pred_train))
 
-    # 訓練データの正解率
-    print(accuracy_score(y_train, y_pred_train))
+        # 訓練データの正解率
+        print(accuracy_score(y_train, y_pred_train))
 
-    # テストデータの混同行列
-    print(confusion_matrix(y_test, y_pred_test))
+        # テストデータの混同行列
+        print(confusion_matrix(y_test, y_pred_test))
 
-    # テストデータでの正解率
-    print(accuracy_score(y_test, y_pred_test))
+        # テストデータでの正解率
+        print(accuracy_score(y_test, y_pred_test))
+    else:
+        # SVMのモデル訓練
+        clf = svm.SVC()
+
+        # グリッドサーチで検証するSVMのハイパーパラメータの設定
+        param_grid = [{'C': [0.001, 0.01, 0.1, 1, 10],
+                       'gamma': [.0001, .001, .01, .1, .2, .5, 1, 10],
+                       'kernel': ['poly']},
+                      {'C': [.001, .01, .1, 1, 10, 100, 1000],
+                       'gamma': [.0001, .001, .01, .1, .2, .5, 1, 10],
+                       'kernel': ['linear']},
+                      {'C': [.001, .01, .1, 1, 10, 100, 1000],
+                       'gamma': [.0001, .001, .01, .1, .2, .5, 1, 10],
+                       'kernel': ['rbf']}
+                      ]
+
+        # グリッドサーチの構築
+        grid_searchlog = GridSearchCV(clf, param_grid, cv=5, scoring='accuracy')
+
+        # グリッドサーチの実行
+        grid_searchlog.fit(X_train, y_train)
+
+        GridSearchCV(cv=5, error_score='raise',
+                     estimator=svm.SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0,
+                                   decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
+                                   max_iter=-1, probability=False, random_state=None, shrinking=True,
+                                   tol=0.001, verbose=False),
+                                   iid=True, n_jobs=1,
+                     param_grid=[{'C': [0.001, 0.01, 0.1, 1, 10],
+                                  'gamma': [0.0001, 0.001, 0.01, 0.1, 0.2, 0.5, 1, 10],
+                                  'kernel': ['poly']}, {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+                                                        'gamma': [0.0001, 0.001, 0.01, 0.1, 0.2, 0.5, 1, 10],
+                                                        'kernel': ['linear']},
+                                 {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+                                  'gamma': [0.0001, 0.001, 0.01, 0.1, 0.2, 0.5, 1, 10],
+                                  'kernel': ['rbf']}],
+                     pre_dispatch='2*n_jobs', refit=True, return_train_score='warn',
+                     scoring='accuracy', verbose=0)
+
+        # 最適なハイパーパラメータの値を確認
+        print(grid_searchlog.best_params_)
+
+        # グリッドサーチで算出した最適なハイパーパラメータの値
+        optimised_svm = grid_searchlog.best_estimator_
+        print(optimised_svm)
+
+        # 最適化されたSVMモデルと訓練データの予測
+        train_y_pred_opt = optimised_svm.predict(X_train)
+        print(train_y_pred_opt)
+
+        # 訓練データの正解率（ハイパーパラメータチューニング実施後）
+        print(accuracy_score(y_train, train_y_pred_opt))
+
+        # 最適化されたSVMモデルとテストデータの予測
+        test_y_pred_opt = optimised_svm.predict(X_test)
+        print(test_y_pred_opt)
+
+        # テストセットの予測結果とIDをデータフレーム型に変更
+        my_solution_opt = pd.DataFrame(test_y_pred_opt, X_test.index, columns=['type'])
+        print(my_solution_opt)
+
+        # CSVファイルとして書き出し
+        my_solution_opt.to_csv('./data/2nd_submit.csv', index_label=['id'])
+
+        # モデルを保存する
+        filename = 'models/finalized_grid_search.sav'
+        pickle.dump(grid_searchlog, open(filename, 'wb'))
+
+        # 保存したモデルをロードする
+        # loaded_model = pickle.load(open(filename, 'rb'))
+        # result = loaded_model.score(X_test, Y_test)
 
 
-# df = pd.read_csv("data/ebay_categories_20190919.csv")
-# svn(df)
+df = pd.read_csv("data/ebay_categories_20190920.csv")
+svm(df)
 
 
 def k_means(df):
@@ -792,12 +791,50 @@ def k_means(df):
     my_plot.set_xticklabels(my_plot.xaxis.get_majorticklabels(), rotation=0)
 
 
-# df = pd.read_csv("data/ebay_categories_20190919.csv")
-# k_means(df)
+def decisoin_tree(df):
+    # ライブラリのインポート
+    import pandas as pd
+    import sklearn
+    from sklearn import datasets
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn import svm
+    from sklearn.metrics import confusion_matrix
+    from sklearn.metrics import accuracy_score
+    from sklearn.preprocessing import LabelEncoder
+    # 必要なライブラリーをインポート
+    import pandas as pd
+    from sklearn import tree
+    from sklearn.datasets import load_iris
+    from sklearn.datasets import load_diabetes
+    import graphviz
 
-# df = pd.read_csv("data/ebay_categories_20190919.csv")
-# titles = df["title"]
-# doc = nlp(titles[0])
-# print(dir(doc))
-# for d in doc:
-#     print((d.text, d.pos_, d.dep_))
+    # 特徴量をダミー変数化
+    dfcol = df.columns[17:]
+    print(dfcol)
+    df1 = df[dfcol]
+    print(df1.head())
+    # ターゲットの値を文字列から数値へ変換
+    labelencoder = LabelEncoder()
+    df['primaryCategory.categoryName'] = labelencoder.fit_transform(df['primaryCategory.categoryName'])
+    # df1["primaryCategory"] = df['primaryCategory.categoryName']
+    target = df['primaryCategory.categoryName']
+    print(df1.head())
+    print(df1.tail())
+
+    # 決定木モデルの訓練
+    clf = tree.DecisionTreeClassifier(max_depth=2)
+    clf = clf.fit(df1, target)
+    # 訓練済みの決定木の視覚化
+    dot_data = tree.export_graphviz(clf, out_file=None,
+                                    feature_names=dfcol,
+                                    class_names=dfcol,
+                                    rounded=True,
+                                    filled=True,
+                                    special_characters=True)
+    graph = graphviz.Source(dot_data)
+    graph.render('data/binary_tree')
+
+
+# df = pd.read_csv("data/ebay_categories_20190920.csv")
+# decisoin_tree(df)

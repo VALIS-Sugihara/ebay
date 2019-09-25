@@ -2,6 +2,7 @@ import json
 import re
 import datetime
 import pandas as pd
+import numpy as np
 from ebay import Ebay
 from rakuten import Rakuten
 from yahoo import Yahoo
@@ -42,7 +43,8 @@ def ebay2df(event, context):
     # Get All Pages.
     if pages > 1:
         for i in range(1, pages):
-            if i < 50:  # TEST:: < 50p
+            if i < 100:
+            # if i < 50:  # TEST:: < 50p
                 add_options = {"paginationInput": {
                     "entriesPerPage": 100,
                     "pageNumber": i + 1
@@ -258,6 +260,7 @@ def yahoo2df(event, context):
                 words.append(token.text)
         return " ".join(words)
 
+
     df["short_Title"] = df.Title.apply(get_ja_short_title)
 
     # CSV 出力
@@ -272,24 +275,22 @@ def yahoo2df(event, context):
     }
 
 
-# ebay2df(True, True)
-# ebay(True, True)
-# df = pd.read_csv("data/sample_ebay_detail_nikon_model.csv")
-# ebay_market_price(df)
-
-# yahoo2df({"query": "nikon"}, True)
-
-def simlarity(ebay_df, yahoo_df):
+def similarity(ebay_df, yahoo_df):
     """ 相関性の高いレコードを連結 """
-    ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190920.csv")
-    yahoo_df = pd.read_csv("data/yahoo_nikon_20190920_ja.csv")
-
     shortTitles = ebay_df["shortTitle"]
+    models = ebay_df["model"]
     en_short_Titles = yahoo_df["en_short_Title"]
     df = pd.DataFrame(columns=yahoo_df.columns)
-    for sttl in shortTitles:
+    for i, sttl in enumerate(shortTitles):
         sttl_doc = nlp(sttl)
-        arr = [sttl_doc.similarity(nlp(ensttl)) for ensttl in en_short_Titles]
+        model_doc = nlp(str(models[i])) if models[i] is not None else ""
+        # shortTitle: en_short_Title, model: en_short_Title の相関平均で比較する
+        arr = []
+        for ensttl in en_short_Titles:
+            score1 = sttl_doc.similarity(nlp(str(ensttl)))
+            score2 = model_doc.similarity(nlp(str(ensttl)))
+            arr.append(np.mean([score1, score2]))
+
         max_index = arr.index(max(arr))
         print(max_index)
         df = df.append(yahoo_df.loc[max_index:max_index])
@@ -302,56 +303,19 @@ def simlarity(ebay_df, yahoo_df):
     df3.to_csv("data/ebay_yahoo_detail_%s.csv" % (TODAY,))
 
 
-df = pd.read_csv("data/ebay_yahoo_detail_20190920.csv")
-
-def change_url(text):
-    ptn = r".+\?auctionID=(.+)"
-    id_ = re.match(ptn, text)
-    base_url = "https://page.auctions.yahoo.co.jp/jp/auction/"
-    url = base_url + id_.groups()[0] if id_ is not None else base_url
-    return url
-
-df["ItemUrl"] = df.ItemUrl.apply(change_url)
-df.to_csv("data/ebay_yahoo_detail_20190920_b.csv")
-# df2["en_short_Title"]
-
-# print(df1.head())
-# print(df2.head())
+def plot(df):
+    import seaborn as sns
+    # 特徴量の散布図行列
+    sns.pairplot(data=df, hue='type')
 
 
-# df3 = pd.concat([df1, df2], axis=1)
+# ebay2df(True, True)
+# yahoo2df({"query": "nikon"}, True)
 
+ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190924.csv")
+yahoo_df = pd.read_csv("data/yahoo_nikon_20190924.csv")
+similarity(ebay_df, yahoo_df)
 
-# from google import Google
-# google = Google()
-# df = df.assign(en_Title=df.apply(lambda x: google.translate(text=x["Title"], source="ja", target="en"), axis=1))
-# df.to_csv("data/svn_yahoo_nikon_en.csv")
-# print(df.head())
-
-# ebay = Ebay()
-# yahoo = Yahoo()
-# df_ebay = pd.read_csv("data/sample_ebay_detail_nikon.csv")
-# df_ebay = pd.read_csv("data/sample_ebay_detail_nikon.csv")
-# import similarity
-#
-# columns = ["en", "ja2en", "ja", "en2ja", "score", "score_en", "score_ja"]
-# df_similarity = pd.DataFrame(columns=columns)
-#
-# for i in range(0, len(df_ebay)):
-#     colum = df_ebay.loc[i]
-#     print(colum["title"])
-#     if colum["model"] is not None:
-#         query = "Nikon %s" % (colum["model"])
-#         event = {"query": query}
-#         df_yahoo = yahoo(event, True)
-#         print(df_yahoo.head())
-#
-#         en_list = [colum["title"]]
-#         ja_list = df_yahoo["Title"]
-#         df = similarity.compare(en_list, ja_list)
-#         df_similarity.append(df.loc[0])
-#         print(df_similarity.head())
-#         exit()
-# df_ebay = df_ebay.assign(model=lambda x: ebay.get_model(x["viewItemURL"]))
-# print(df_ebay.head())
-# df_ebay.to_csv("data/sample_ebay_detail_nikon_model.csv")
+# csv = "data/ebay_categories_20190920.csv"
+# df = pd.read_csv(csv)
+# plot(df)
