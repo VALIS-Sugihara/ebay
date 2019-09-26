@@ -239,15 +239,3 @@ class Ebay:
 
     def _get_keywords(self):
         return self.keywords
-
-
-
-# test = pd.read_csv("data/sample_ebay_leica.csv")
-# cat = test["primaryCategory.categoryName"].value_counts()
-# import matplotlib.pyplot as plt
-# import numpy as np
-# # print(cat.to_list())
-# # exit()
-# # plt.bar(np.array([1,2]), np.array([1,5]))
-# plt.bar(cat.index, cat.to_list())
-# plt.show()

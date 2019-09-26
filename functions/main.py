@@ -91,7 +91,7 @@ def ebay2df(event, context):
             name = model if model is not None else title
             add_options = {"categoryId": category_id}
             response = ebay.detail_search(keywords=name, add_options=add_options)
-            cnt = ebay.get_total_count(response)
+            cnt = int(ebay.get_total_count(response))
             print(name, cnt)
         except:
             cnt = None
@@ -312,12 +312,12 @@ def plot(df):
     sns.pairplot(data=df, hue='type')
 
 
-# ebay2df(True, True)
-# yahoo2df({"query": "nikon"}, True)
+ebay2df(True, True)
+yahoo2df({"query": "nikon"}, True)
 
-ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190924.csv")
-yahoo_df = pd.read_csv("data/yahoo_nikon_20190924.csv")
-similarity(ebay_df, yahoo_df)
+# ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190924.csv")
+# yahoo_df = pd.read_csv("data/yahoo_nikon_20190924.csv")
+# similarity(ebay_df, yahoo_df)
 
 # csv = "data/ebay_categories_20190920.csv"
 # df = pd.read_csv(csv)

@@ -39,8 +39,8 @@ def hinted_tuple_hook(obj):
         return obj
 
 
-enc = MultiDimensionalArrayEncoder()
-jsonstring = enc.encode([1, 2, (3, 4), [5, 6, (7, 8)]])
+# enc = MultiDimensionalArrayEncoder()
+# jsonstring = enc.encode([1, 2, (3, 4), [5, 6, (7, 8)]])
 
 # print(jsonstring)
 
@@ -97,8 +97,8 @@ class FrequentDictionary(Dictionary):
         super(FrequentDictionary, self).__init__()
         self.brand = brand
 
-    def get_frequency(self, brand="ebay"):
-        return r.smembers(brand+":"+self.key)
+    def get_frequency(self, brand="ebay", key=""):
+        return r.smembers(brand+":"+self.key+":"+key)
 
     def set_frequency(self, brand, key, value):
         value = self.to_json(value)

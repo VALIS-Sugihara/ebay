@@ -88,11 +88,9 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
         response = response.json()
         return response
 
-
     def get_items(self, response):
         items = response["Items"] if "Items" in response else [{}]
         return items
-
 
     def make_dataframe(self, items):
         df = pd.DataFrame(columns=list(self.column_permutations))
@@ -100,7 +98,6 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
             df.loc[i] = self.get_values(item)
 
         return df
-
 
     def get_values(self, item):
         values = []
@@ -130,11 +127,3 @@ suba/cabinet/leica/imgrc0080618668.jpg?_ex=128x128', 'https://thumbnail.image.ra
 
     def get_total_pages(self, response):
         return response["pageCount"]
-
-
-
-# rakuten = Rakuten()
-# response = rakuten.search("leica")
-# items = rakuten.get_items(response)
-# df = rakuten.make_dataframe(items)
-# df.to_csv("./data/sample_rakuten.csv")
