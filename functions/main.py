@@ -8,6 +8,8 @@ from rakuten import Rakuten
 from yahoo import Yahoo
 from google import Google
 import spacy
+from sklearn.preprocessing import LabelEncoder
+
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
 nlp = spacy.load('en_core_web_sm')
 nlp_ginza = spacy.load('ja_ginza_nopn')
@@ -101,6 +103,10 @@ def ebay2df(event, context):
 
     # count数でソート
     df = df.sort_values(by=["TotalCounts"], ascending=False)
+
+    # ターゲットの値を文字列から数値へ変換
+    labelencoder = LabelEncoder()
+    df['Target'] = labelencoder.fit_transform(df['primaryCategory.categoryName'])
 
     # CSV 出力
     df.to_csv("./data/ebay_detail_%s_model_%s.csv" % (keywords, TODAY,))
@@ -280,7 +286,17 @@ def similarity(ebay_df, yahoo_df):
     shortTitles = ebay_df["shortTitle"]
     models = ebay_df["model"]
     en_short_Titles = yahoo_df["en_short_Title"]
+    targets = ebay_df["Target"]
     df = pd.DataFrame(columns=yahoo_df.columns)
+
+    def same_category(i, arr, targets, yahoo_df):
+        max_index = arr.index(max(arr))
+        if yahoo_df.loc[max_index:max_index]["Target_y"] == targets[i]:
+            return max_index
+        else:
+            arr.pop(max_index)
+            same_category(i, arr, targets, yahoo_df)
+
     for i, sttl in enumerate(shortTitles):
         try:
             sttl_doc = nlp(sttl)
@@ -292,7 +308,7 @@ def similarity(ebay_df, yahoo_df):
                 score2 = model_doc.similarity(nlp(str(ensttl)))
                 arr.append(np.mean([score1, score2]))
 
-            max_index = arr.index(max(arr))
+            max_index = same_category(i, arr, targets, yahoo_df)
             print(max_index)
             df = df.append(yahoo_df.loc[max_index:max_index])
         except:
@@ -312,12 +328,12 @@ def plot(df):
     sns.pairplot(data=df, hue='type')
 
 
-ebay2df(True, True)
-yahoo2df({"query": "nikon"}, True)
+# ebay2df(True, True)
+# yahoo2df({"query": "nikon"}, True)
 
-# ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190924.csv")
-# yahoo_df = pd.read_csv("data/yahoo_nikon_20190924.csv")
-# similarity(ebay_df, yahoo_df)
+ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190927.csv")
+yahoo_df = pd.read_csv("data/yahoo_nikon_20190927.csv")
+similarity(ebay_df, yahoo_df)
 
 # csv = "data/ebay_categories_20190920.csv"
 # df = pd.read_csv(csv)

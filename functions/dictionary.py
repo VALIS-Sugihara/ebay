@@ -98,11 +98,13 @@ class FrequentDictionary(Dictionary):
         self.brand = brand
 
     def get_frequency(self, brand="ebay", key=""):
-        return r.smembers(brand+":"+self.key+":"+key)
+        # return r.smembers(brand+":"+self.key+":"+key)
+        return r.get(brand+":"+self.key+":"+key).decode()
 
     def set_frequency(self, brand, key, value):
         value = self.to_json(value)
-        r.sadd(brand+":"+self.key+":"+key, value)
+        # r.sadd(brand+":"+self.key+":"+key, value)
+        r.set(brand+":"+self.key+":"+key, value)
 
 
 # print(r.keys("ebay*"))

@@ -280,7 +280,6 @@ def analyze_category(df, brand_name="ebay"):
 
     df.to_csv("data/%s_predict_%s.csv" % (brand_name, TODAY,))
 
-
 # df = pd.read_csv("data/ebay_detail_nikon_model_20190925.csv")
 # analyze_category(df, "ebay")
 
@@ -347,7 +346,7 @@ def each_category_and_score(df, brand_name="ebay"):
     return df
 
 
-def each_word_and_count(df, brand_name="ebay"):
+def each_word_and_count(df, brand_name="ebay", use_pickle=False):
     KEYWORDS = "nikon"  # TEST
 
     # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
@@ -368,11 +367,16 @@ def each_word_and_count(df, brand_name="ebay"):
     #                 if isinstance(words, bytes):
     #                     frequency_list[i][1][ii] = fd.from_json(words.decode())
     # else:
-    frequency_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
-    frequency_list = list(frequent_title_in_category(frequency_df, column_names[brand_name]))
+    if use_pickle is False:
+        # frequency_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
+        frequency_df = df
+        frequency_list = list(frequent_title_in_category(frequency_df, column_names[brand_name]))
 
-    filename = "data/dict/frequency_list_%s" % (TODAY,)
-    pickle.dump(frequency_list, open(filename, 'wb'))
+        filename = "data/dict/frequency_list_%s" % (TODAY,)
+        pickle.dump(frequency_list, open(filename, 'wb'))
+    else:
+        file_name = "data/dict/frequency_list_20190927"
+        frequency_list = pickle.load(open(file_name, 'rb'))
 
     # TEST::
     # brand_name = "yahoo"
@@ -384,7 +388,7 @@ def each_word_and_count(df, brand_name="ebay"):
         # categories[lst[0]] = []
         for target, cnt in lst[1]:
             target = target.decode() if isinstance(target, bytes) else target
-            categories[lst[0]+"_"+target.lower()] = []
+            categories["Feature_"+lst[0]+"_"+target.lower()] = []
     for ttl in titles:
         top_score = 0
         top_category = None
@@ -405,9 +409,9 @@ def each_word_and_count(df, brand_name="ebay"):
                 # 減点法
                 if target.lower() not in words:
                     score -= cnt / total
-                    categories["%s_%s" % (category, target.lower(),)].append(0)
+                    categories["Feature_%s_%s" % (category, target.lower(),)].append(0)
                 else:
-                    categories["%s_%s" % (category, target.lower(), )].append(1)
+                    categories["Feature_%s_%s" % (category, target.lower(), )].append(1)
 
                 # 加点法
                 # if target.lower() in words:
@@ -434,13 +438,25 @@ def each_word_and_count(df, brand_name="ebay"):
     return df
 
 
-# fd = FrequentDictionary()
-# print(r.keys("ebay:common_words:*"))
-# print(fd.get_frequency("ebay"))
-# exit()
-df = pd.read_csv("data/ebay_detail_nikon_model_20190926.csv")
-df = each_word_and_count(df, "ebay")
-df.to_csv("data/ebay_categories_%s" % (TODAY,))
+# df = pd.read_csv("data/yahoo_nikon_20190927.csv")
+# df = each_word_and_count(df, "yahoo", use_pickle=True)
+# df.to_csv("data/yahoo_categories_%s.csv" % ("20190927",))
+
+
+def make_test_data(df):
+    # 訓練データ（80%）とテストデータ（20%)へスプリット
+    train_set, test_set = train_test_split(df, test_size = 0.2, random_state = 42)
+
+    # 訓練データの特徴量/ターゲットの切り分け
+    X_train = train_set.drop('Target', axis=1).fillna(0)
+    Y_train = train_set['Target'].copy().fillna(0)
+
+    # テストデータの特徴量/ターゲットの切り分け
+    X_test = test_set.drop('Target', axis=1).fillna(0)
+    Y_test = test_set['Target'].copy().fillna(0)
+
+    return X_train, Y_train, X_test, Y_test
+
 
 def logistic_regression(df):
     # 特徴量をダミー変数化
@@ -510,16 +526,22 @@ def logistic_regression(df):
 # logistic_regression(df)
 
 
-def svm(df, grid_search_flg=True):
+def support_vector_machine(df, grid_search_flg=True):
+    df = df.assign(primaryCategory=df["primaryCategory.categoryName"],)
     # 特徴量をダミー変数化
-    dfcol = df.columns[17:]
+    dfcol = []
+    for col in df.columns:
+        if "Feature_" in col or "Target" in col:
+            dfcol.append(col)
+    # dfcol = df.columns[17:]
     df1 = df[dfcol]
+    print(df1.head())
     # ターゲットの値を文字列から数値へ変換
-    labelencoder = LabelEncoder()
-    df1['primaryCategory'] = labelencoder.fit_transform(df['primaryCategory.categoryName'])
+    # labelencoder = LabelEncoder()
+    # df1['Target'] = labelencoder.fit_transform(df['primaryCategory.categoryName'])
 
     # 訓練｜テストデータの作成
-    X_train, Y_train, X_test, Y_test = make_test_data(df)
+    X_train, Y_train, X_test, Y_test = make_test_data(df1)
 
     if grid_search_flg is False:
         # SVMのモデル訓練
@@ -605,8 +627,8 @@ def svm(df, grid_search_flg=True):
     pickle.dump(model, open(filename, 'wb'))
 
 
-# df = pd.read_csv("data/ebay_categories_20190920.csv")
-# svm(df)
+# df = pd.read_csv("data/ebay_categories_20190927.csv")
+# support_vector_machine(df)
 
 
 def k_means(df):
@@ -718,26 +740,27 @@ def decisoin_tree(df):
 
 
 def use_model(df, model_name="finalized_grid_search"):
+    print(df.head())
+    df = df.fillna(0)
+    print(df.head())
     # 保存したモデルをロードする
-    loaded_model = pickle.load(open(model_name, 'rb'))
-    # result = loaded_model.score(X_test, Y_test)
-    return df
+    loaded_model = pickle.load(open("models/"+model_name+".sav", 'rb'))
+    result = loaded_model.predict(df)
+    print(result)
+    # X_train, Y_train, X_test, Y_test = make_test_data(df)
+    return result
 
 
-def make_test_data(df):
-    # 訓練データ（80%）とテストデータ（20%)へスプリット
-    train_set, test_set = train_test_split(df, test_size = 0.2, random_state = 42)
-
-    # 訓練データの特徴量/ターゲットの切り分け
-    X_train = train_set.drop('primaryCategory', axis=1).fillna(0)
-    Y_train = train_set['primaryCategory'].copy().fillna(0)
-
-    # テストデータの特徴量/ターゲットの切り分け
-    X_test = test_set.drop('primaryCategory', axis=1).fillna(0)
-    Y_test = test_set['primaryCategory'].copy().fillna(0)
-
-    return X_train, Y_train, X_test, Y_test
-
+# df = pd.read_csv("data/yahoo_categories_20190927.csv")
+# dfcol = []
+# for col in df.columns:
+#     if "Feature_" in col:
+#         dfcol.append(col)
+# df1 = df[dfcol]
+# result = use_model(df1)
+# df = pd.read_csv("data/yahoo_nikon_20190927.csv")
+# df["Target_y"] = result
+# df.to_csv("data/yahoo_nikon_20190927.csv")
 
 # df = pd.read_csv("data/ebay_categories_20190920.csv")
 # decisoin_tree(df)
