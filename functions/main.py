@@ -283,15 +283,15 @@ def yahoo2df(event, context):
 
 def similarity(ebay_df, yahoo_df):
     """ 相関性の高いレコードを連結 """
-    shortTitles = ebay_df["shortTitle"]
-    models = ebay_df["model"]
-    en_short_Titles = yahoo_df["en_short_Title"]
-    targets = ebay_df["Target"]
+    shortTitles = ebay_df["shortTitle"].to_list()
+    models = ebay_df["model"].to_list()
+    en_short_Titles = yahoo_df["en_short_Title"].to_list()[0:30]
+    targets = ebay_df["Target"].to_list()
     df = pd.DataFrame(columns=yahoo_df.columns)
 
     def same_category(i, arr, targets, yahoo_df):
         max_index = arr.index(max(arr))
-        if yahoo_df.loc[max_index:max_index]["Target_y"] == targets[i]:
+        if str(yahoo_df.at[max_index, "Target_y"]) == (targets[i]):
             return max_index
         else:
             arr.pop(max_index)
@@ -300,18 +300,22 @@ def similarity(ebay_df, yahoo_df):
     for i, sttl in enumerate(shortTitles):
         try:
             sttl_doc = nlp(sttl)
-            model_doc = nlp(str(models[i])) if models[i] is not None else nlp(str(models[i]))
+            model_doc = nlp(str(models[i])) if models[i] is not None else nlp("")
             # shortTitle: en_short_Title, model: en_short_Title の相関平均で比較する
             arr = []
             for ensttl in en_short_Titles:
-                score1 = sttl_doc.similarity(nlp(str(ensttl)))
-                score2 = model_doc.similarity(nlp(str(ensttl)))
+                ensttl_doc = nlp(ensttl)
+                score1 = sttl_doc.similarity(ensttl_doc)
+                score2 = model_doc.similarity(ensttl_doc)
                 arr.append(np.mean([score1, score2]))
-
+                print(arr)
             max_index = same_category(i, arr, targets, yahoo_df)
             print(max_index)
             df = df.append(yahoo_df.loc[max_index:max_index])
-        except:
+        except Exception as e:
+            print(e)
+            empty_list = pd.Series([None for c in df.columns])
+            df = df.append(empty_list, ignore_index=True)
             continue
 
     df = df.reset_index(drop=True)
