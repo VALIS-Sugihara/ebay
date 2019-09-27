@@ -285,7 +285,7 @@ def similarity(ebay_df, yahoo_df):
     """ 相関性の高いレコードを連結 """
     shortTitles = ebay_df["shortTitle"].to_list()
     models = ebay_df["model"].to_list()
-    en_short_Titles = yahoo_df["en_short_Title"].to_list()[0:30]
+    en_short_Titles = yahoo_df["en_short_Title"].to_list()
     targets = ebay_df["Target"].to_list()
     df = pd.DataFrame(columns=yahoo_df.columns)
 
