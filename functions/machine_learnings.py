@@ -375,7 +375,7 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
     else:
         filename = "data/dict/frequency_list_%s" % (TODAY,)
         frequency_list = pickle.load(open(filename, 'rb'))
-    
+
     print(frequency_list)
     # TEST::
     # brand_name = "yahoo"
@@ -388,7 +388,9 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
         for target, cnt in lst[1]:
             target = target.decode() if isinstance(target, bytes) else target
             categories["Feature_"+lst[0]+"_"+target.lower()] = []
+    print("categories is...", categories)
     for ttl in titles:
+        print("ttl is ...", ttl)
         # top_score = 0
         # top_category = None
         for lst in frequency_list[0:10]:
@@ -426,7 +428,7 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
                 # top_score = score
         # print(ttl, top_category)
         # categories["predict_category"].append(top_category)
-    print(categories)
+    print("categories is ...", categories)
     for category, score in categories.items():
         df[category] = score
 
