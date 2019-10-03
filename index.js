@@ -7,7 +7,7 @@ function getCSV(){
       ( "0"+( now.getMonth()+1 ) ).slice(-2)+
       ( "0"+now.getDate() ).slice(-2);
     var req = new XMLHttpRequest(); // HTTPでファイルを読み込むためのXMLHttpRrequestオブジェクトを生成
-    req.open("get", "http://ebay-frontend.s3-website-ap-northeast-1.amazonaws.com/data/ebay_yahoo_detail_20190926.csv", true); // アクセスするファイルを指定
+    req.open("get", "http://ebay-frontend.s3-website-ap-northeast-1.amazonaws.com/data/ebay_yahoo_detail_20191001.csv", true); // アクセスするファイルを指定
     // req.open("get", "http://ebay-frontend.s3-website-ap-northeast-1.amazonaws.com/data/ebay_yahoo_detail_"+yyyymmdd+".csv", true); // アクセスするファイルを指定
     req.send(null); // HTTPリクエストの発行
 

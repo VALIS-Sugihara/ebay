@@ -375,7 +375,8 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
     else:
         filename = "data/dict/frequency_list_%s" % (TODAY,)
         frequency_list = pickle.load(open(filename, 'rb'))
-
+    
+    print(frequency_list)
     # TEST::
     # brand_name = "yahoo"
     titles = df[column_names[brand_name][0]]
@@ -410,7 +411,6 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
                     categories["Feature_%s_%s" % (category, target.lower(),)].append(0)
                 else:
                     categories["Feature_%s_%s" % (category, target.lower(), )].append(1)
-
                 # 加点法
                 # if target.lower() in words:
                 #     score += cnt / total
@@ -426,7 +426,6 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
                 # top_score = score
         # print(ttl, top_category)
         # categories["predict_category"].append(top_category)
-
     print(categories)
     for category, score in categories.items():
         df[category] = score

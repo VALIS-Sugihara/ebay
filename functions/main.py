@@ -314,8 +314,12 @@ def similarity(ebay_df, yahoo_df):
             df = df.append(yahoo_df.loc[max_index:max_index])
         except Exception as e:
             print(e)
-            empty_list = pd.Series([None for c in df.columns])
+            d = {}
+            for c in df.columns:
+                d[c] = None
+            empty_list = pd.DataFrame(d, columns=df.columns)
             df = df.append(empty_list, ignore_index=True)
+            print(df.tail())
             continue
 
     df = df.reset_index(drop=True)
@@ -332,12 +336,12 @@ def plot(df):
     sns.pairplot(data=df, hue='type')
 
 
-# ebay2df(True, True)
-# yahoo2df({"query": "nikon"}, True)
+ebay2df(True, True)
+yahoo2df({"query": "nikon"}, True)
 
-ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190927.csv")
-yahoo_df = pd.read_csv("data/yahoo_nikon_20190927.csv")
-similarity(ebay_df, yahoo_df)
+#ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190930.csv")
+#yahoo_df = pd.read_csv("data/yahoo_nikon_20190930.csv")
+#similarity(ebay_df, yahoo_df)
 
 # csv = "data/ebay_categories_20190920.csv"
 # df = pd.read_csv(csv)
