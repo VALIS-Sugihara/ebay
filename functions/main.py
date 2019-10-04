@@ -298,13 +298,15 @@ def similarity(ebay_df, yahoo_df):
             same_category(i, arr, targets, yahoo_df)
 
     for i, sttl in enumerate(shortTitles):
+        print("sttl is ...", sttl)
         try:
-            sttl_doc = nlp(sttl)
+            sttl_doc = nlp(str(sttl))
             model_doc = nlp(str(models[i])) if models[i] is not None else nlp("")
             # shortTitle: en_short_Title, model: en_short_Title の相関平均で比較する
             arr = []
             for ensttl in en_short_Titles:
-                ensttl_doc = nlp(ensttl)
+                print("ensttl is ...", ensttl)
+                ensttl_doc = nlp(str(ensttl))
                 score1 = sttl_doc.similarity(ensttl_doc)
                 score2 = model_doc.similarity(ensttl_doc)
                 arr.append(np.mean([score1, score2]))
@@ -336,12 +338,25 @@ def plot(df):
     sns.pairplot(data=df, hue='type')
 
 
-ebay2df(True, True)
-yahoo2df({"query": "nikon"}, True)
+from machine_learnings import *
 
-#ebay_df = pd.read_csv("data/ebay_detail_nikon_model_20190930.csv")
-#yahoo_df = pd.read_csv("data/yahoo_nikon_20190930.csv")
-#similarity(ebay_df, yahoo_df)
+
+def exec_all(keywords="nikon"):
+    ebay2df(True, True)
+
+    machine_learnings.categories()
+    machine_learnings.ml()
+
+    yahoo2df({"query": keywords}, True)
+
+    ebay_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
+    yahoo_df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
+    similarity(ebay_df, yahoo_df)
+
+
+ebay_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
+yahoo_df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
+similarity(ebay_df, yahoo_df)
 
 # csv = "data/ebay_categories_20190920.csv"
 # df = pd.read_csv(csv)

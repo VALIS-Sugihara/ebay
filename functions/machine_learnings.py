@@ -382,7 +382,8 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
     titles = df[column_names[brand_name][0]]
 
     # 初期化
-    categories = {"predict_category": []}
+    # categories = {"predict_category": []}
+    categories = {}
     for lst in frequency_list[0:10]:
         # categories[lst[0]] = []
         for target, cnt in lst[1]:
@@ -393,42 +394,22 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
         print("ttl is ...", ttl)
         # top_score = 0
         # top_category = None
-        for lst in frequency_list[0:10]:
-            # score = 1  # 減点法
-            # score = 0  # 加点法
-            category = lst[0]
-            # print("words ...", lst[1])
-            # total = np.sum([cnt for target, cnt in lst[1]])
-            for target, cnt in lst[1]:
-                target = target.decode() if isinstance(target, bytes) else target
-
-                doc = nlp(ttl)
-                # 翻訳リストに追加 & return
-                words = [token.text.strip().lower() for token in doc]
-
-                # if target.lower() not in re.split(r"[,\s.]", ttl.lower()):
-                # 減点法
-                if target.lower() not in words:
-                    # score -= cnt / total
-                    categories["Feature_%s_%s" % (category, target.lower(),)].append(0)
-                else:
-                    categories["Feature_%s_%s" % (category, target.lower(), )].append(1)
-                # 加点法
-                # if target.lower() in words:
-                #     score += cnt / total
-                #     categories["%s_%s" % (category, target.lower(), )].append(1)
-                # else:
-                #     categories["%s_%s" % (category, target.lower(), )].append(0)
-
-            # categories[category].append(score)
-
-            # if score > top_score:
-                # print(top_score, top_category)
-                # top_category = lst[0]
-                # top_score = score
-        # print(ttl, top_category)
-        # categories["predict_category"].append(top_category)
-    print("categories is ...", categories)
+        doc = nlp(str(ttl))
+        words = []
+        for token in doc:
+            if token.pos_ in ("PROPN", "NOUN", "NUM",):
+                words.append(token.text.strip().lower())
+        # print("words is ...", words)
+        for category in categories.keys():
+            word = category.split("_")[-1].lower()
+            if word in words:
+                # print("word is ...", word, True)
+                categories[category].append(1)
+            else:
+                categories[category].append(0)
+                # print("word is ...", word, False)
+        # print("categories is ...", categories)
+    # print("categories is ...", categories)
     for category, score in categories.items():
         df[category] = score
 
@@ -784,5 +765,5 @@ def ml():
     df.to_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
 
 
-categories()
-ml()
+# categories()
+# ml()
