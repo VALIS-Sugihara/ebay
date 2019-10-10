@@ -731,17 +731,17 @@ def use_model(df, model_name="finalized_grid_search"):
     return result
 
 
-def categories():
-    df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
+def categories(keywords="nikon"):
+    df = pd.read_csv("data/ebay_detail_%s_model_%s.csv" % (keywords, TODAY,))
     df = each_word_and_count(df, "ebay", use_pickle=False)
     df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
 
-    df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
+    df = pd.read_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
     df = each_word_and_count(df, "yahoo", use_pickle=True)
     df.to_csv("data/yahoo_categories_%s.csv" % (TODAY,))
 
 
-def ml():
+def ml(keywords="nikon"):
     """
     ebay
     Training Data
@@ -762,7 +762,7 @@ def ml():
     result = use_model(df1)
     df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
     df["Target_y"] = result
-    df.to_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
+    df.to_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
 
 
 # categories()

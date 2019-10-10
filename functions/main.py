@@ -29,7 +29,7 @@ def ebay2df(event, context):
         "pageNumber": page_number
     }}
 
-    keywords = "nikon lens mf"
+    keywords = event["keywords"]
 
     response = ebay.general_search(keywords=keywords, add_options=add_options)
     items = ebay.get_items(response)
@@ -348,11 +348,11 @@ import machine_learnings
 def exec_all(keywords="nikon"):
     import os
     try:
-        # ebay2df(True, True)
-        yahoo2df({"query": "nikon lens mf"}, True)
+        ebay2df({"keywords": keywords}, True)
+        yahoo2df({"query": keywords}, True)
 
-        machine_learnings.categories()
-        machine_learnings.ml()
+        machine_learnings.categories(keywords)
+        machine_learnings.ml(keywords)
 
         ebay_df = pd.read_csv("data/ebay_detail_%s_model_%s.csv" % (keywords, TODAY,))
         yahoo_df = pd.read_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
@@ -360,7 +360,7 @@ def exec_all(keywords="nikon"):
         os.system("aws s3 cp _result s3://ebay-frontend/data/%s_success" % (TODAY,))
     except Exception:
         import traceback
-        print(traceback.print_exc())
+        traceback.print_exc()
         os.system("aws s3 cp _result s3://ebay-frontend/data/%s_error" % (TODAY,))
 
 
