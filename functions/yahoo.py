@@ -51,7 +51,7 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
             'appid': CLIENT_ID,
             'query': query,
             "page": 1,
-            # "type": "all",  # all（全文一致） or any（部分一致）
+            "type": "any",  # all（全文一致） or any（部分一致）
             # "category": {id},
             # 'output': 'json',
         }

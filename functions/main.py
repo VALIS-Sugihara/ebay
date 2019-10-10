@@ -11,7 +11,7 @@ import spacy
 from sklearn.preprocessing import LabelEncoder
 
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
-nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_md')
 nlp_ginza = spacy.load('ja_ginza_nopn')
 
 TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
@@ -29,7 +29,7 @@ def ebay2df(event, context):
         "pageNumber": page_number
     }}
 
-    keywords = "nikon"
+    keywords = "nikon lens mf"
 
     response = ebay.general_search(keywords=keywords, add_options=add_options)
     items = ebay.get_items(response)
@@ -45,8 +45,8 @@ def ebay2df(event, context):
     # Get All Pages.
     if pages > 1:
         for i in range(1, pages):
-            if i < 100:
-            # if i < 50:  # TEST:: < 50p
+            # if i < 100:
+            if i < 50:  # TEST:: < 50p
                 add_options = {"paginationInput": {
                     "entriesPerPage": 100,
                     "pageNumber": i + 1
@@ -222,6 +222,8 @@ def yahoo2df(event, context):
 
     # Get All Pages.
     if pages > 1:
+        # if pages > 50:
+        #     pages = 50
         for i in range(1, pages):
             add_options = {
                 "page": i + 1
@@ -291,7 +293,7 @@ def similarity(ebay_df, yahoo_df):
 
     def same_category(i, arr, targets, yahoo_df):
         max_index = arr.index(max(arr))
-        if str(yahoo_df.at[max_index, "Target_y"]) == (targets[i]):
+        if str(yahoo_df.at[max_index, "Target_y"]) == str(targets[i]):
             return max_index
         else:
             arr.pop(max_index)
@@ -310,11 +312,13 @@ def similarity(ebay_df, yahoo_df):
                 score1 = sttl_doc.similarity(ensttl_doc)
                 score2 = model_doc.similarity(ensttl_doc)
                 arr.append(np.mean([score1, score2]))
-                print(arr)
+                print("score is ...", np.mean([score1, score2]))
+                # print(arr)
             max_index = same_category(i, arr, targets, yahoo_df)
             print(max_index)
             df = df.append(yahoo_df.loc[max_index:max_index])
-        except Exception as e:
+            print(df.tail())
+        except ValueError as e:
             print(e)
             d = {}
             for c in df.columns:
@@ -338,25 +342,36 @@ def plot(df):
     sns.pairplot(data=df, hue='type')
 
 
-from machine_learnings import *
-
+# from machine_learnings import *
+import machine_learnings
 
 def exec_all(keywords="nikon"):
-    ebay2df(True, True)
+    import os
+    try:
+        # ebay2df(True, True)
+        yahoo2df({"query": "nikon lens mf"}, True)
 
-    machine_learnings.categories()
-    machine_learnings.ml()
+        machine_learnings.categories()
+        machine_learnings.ml()
 
-    yahoo2df({"query": keywords}, True)
+        ebay_df = pd.read_csv("data/ebay_detail_%s_model_%s.csv" % (keywords, TODAY,))
+        yahoo_df = pd.read_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
+        similarity(ebay_df, yahoo_df)
+        os.system("aws s3 cp _result s3://ebay-frontend/data/%s_success" % (TODAY,))
+    except Exception:
+        import traceback
+        print(traceback.print_exc())
+        os.system("aws s3 cp _result s3://ebay-frontend/data/%s_error" % (TODAY,))
 
-    ebay_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
-    yahoo_df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
-    similarity(ebay_df, yahoo_df)
 
+exec_all("nikon lens mf")
 
-ebay_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
-yahoo_df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
-similarity(ebay_df, yahoo_df)
+# ebay2df(True, True)
+# yahoo2df({"query": "nikon"}, True)
+# TODAY = "20191007"
+# ebay_df = pd.read_csv("data/ebay_detail_nikon_model_%s.csv" % (TODAY,))
+# yahoo_df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
+# similarity(ebay_df, yahoo_df)
 
 # csv = "data/ebay_categories_20190920.csv"
 # df = pd.read_csv(csv)
