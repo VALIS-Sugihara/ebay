@@ -36,7 +36,7 @@ r = redis.Redis(host='localhost', port=6379, db=0)
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
 nlp = spacy.load('en_core_web_sm')
 
-keywords = "leica"
+# keywords = "leica"
 
 TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
 
@@ -346,7 +346,7 @@ def each_category_and_score(df, brand_name="ebay"):
     return df
 
 
-def each_word_and_count(df, brand_name="ebay", use_pickle=False):
+def each_word_and_count(df, keywords="nikon", brand_name="ebay", use_pickle=False):
     # BRAND, TITLE, CATEGORY_ID, CATEGORY_NAME
     column_names = {
         "ebay": ("title", "primaryCategory.categoryName", "primaryCategory.categoryId",),
@@ -370,10 +370,10 @@ def each_word_and_count(df, brand_name="ebay", use_pickle=False):
         frequency_df = df
         frequency_list = list(frequent_title_in_category(frequency_df, column_names[brand_name]))
 
-        filename = "data/dict/frequency_list_%s" % (TODAY,)
+        filename = "data/dict/frequency_list_%s_%s" % (keywords, TODAY,)
         pickle.dump(frequency_list, open(filename, 'wb'))
     else:
-        filename = "data/dict/frequency_list_%s" % (TODAY,)
+        filename = "data/dict/frequency_list_%s_%s" % (keywords, TODAY,)
         frequency_list = pickle.load(open(filename, 'rb'))
 
     print(frequency_list)
@@ -733,11 +733,11 @@ def use_model(df, model_name="finalized_grid_search"):
 
 def categories(keywords="nikon"):
     df = pd.read_csv("data/ebay_detail_%s_model_%s.csv" % (keywords, TODAY,))
-    df = each_word_and_count(df, "ebay", use_pickle=False)
+    df = each_word_and_count(df, keywords, "ebay", use_pickle=False)
     df.to_csv("data/ebay_categories_%s.csv" % (TODAY,))
 
     df = pd.read_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
-    df = each_word_and_count(df, "yahoo", use_pickle=True)
+    df = each_word_and_count(df, keywords, "yahoo", use_pickle=True)
     df.to_csv("data/yahoo_categories_%s.csv" % (TODAY,))
 
 
