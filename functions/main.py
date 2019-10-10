@@ -9,6 +9,11 @@ from yahoo import Yahoo
 from google import Google
 import spacy
 from sklearn.preprocessing import LabelEncoder
+import sys
+import os
+
+args = sys.argv
+keywords = args[1]
 
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
 nlp = spacy.load('en_core_web_md')
@@ -345,11 +350,11 @@ def plot(df):
 # from machine_learnings import *
 import machine_learnings
 
+
 def exec_all(keywords="nikon"):
-    import os
     try:
-        # ebay2df({"keywords": keywords}, True)
-        # yahoo2df({"query": keywords}, True)
+        ebay2df({"keywords": keywords}, True)
+        yahoo2df({"query": keywords}, True)
 
         machine_learnings.categories(keywords)
         machine_learnings.ml(keywords)
@@ -364,7 +369,7 @@ def exec_all(keywords="nikon"):
         os.system("aws s3 cp _result s3://ebay-frontend/data/%s_error" % (TODAY,))
 
 
-exec_all("nikon lens mf")
+exec_all(keywords)
 
 # ebay2df(True, True)
 # yahoo2df({"query": "nikon"}, True)
