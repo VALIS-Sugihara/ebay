@@ -348,8 +348,8 @@ import machine_learnings
 def exec_all(keywords="nikon"):
     import os
     try:
-        ebay2df({"keywords": keywords}, True)
-        yahoo2df({"query": keywords}, True)
+        # ebay2df({"keywords": keywords}, True)
+        # yahoo2df({"query": keywords}, True)
 
         machine_learnings.categories(keywords)
         machine_learnings.ml(keywords)
