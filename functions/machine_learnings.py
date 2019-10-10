@@ -760,7 +760,7 @@ def ml(keywords="nikon"):
             dfcol.append(col)
     df1 = df[dfcol]
     result = use_model(df1)
-    df = pd.read_csv("data/yahoo_nikon_%s.csv" % (TODAY,))
+    df = pd.read_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
     df["Target_y"] = result
     df.to_csv("data/yahoo_%s_%s.csv" % (keywords, TODAY,))
 
