@@ -4,8 +4,8 @@ import spacy
 import pickle
 import re
 from collections import defaultdict  # For word frequency
-from google import Google
-from rakuten import Rakuten
+from modules.google import Google
+from modules.rakuten import Rakuten
 import redis
 import numpy as np
 import pandas as pd
@@ -27,8 +27,8 @@ from sklearn import tree
 # ハイパーパラメータチューニング
 from sklearn.model_selection import GridSearchCV
 # オリジナル辞書
-from dictionary import Dictionary
-from dictionary import FrequentDictionary
+from modules.dictionary import Dictionary
+from modules.dictionary import FrequentDictionary
 
 # Redis に接続します
 r = redis.Redis(host='localhost', port=6379, db=0)

@@ -1,6 +1,6 @@
 import json
 import re
-from google import Google
+from modules.google import Google
 google = Google()
 
 import redis

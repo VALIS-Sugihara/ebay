@@ -3,10 +3,10 @@ import re
 import datetime
 import pandas as pd
 import numpy as np
-from ebay import Ebay
-from rakuten import Rakuten
-from yahoo import Yahoo
-from google import Google
+from modules.ebay import Ebay
+from modules.rakuten import Rakuten
+from modules.yahoo import Yahoo
+from modules.google import Google
 import spacy
 from sklearn.preprocessing import LabelEncoder
 import sys
@@ -97,9 +97,17 @@ def ebay2df(event, context):
         try:
             name = model if model is not None else title
             add_options = {"categoryId": category_id}
+            response = ebay.detail_search(method_name="findItemsAdvanced", keywords=name, add_options=add_options)
+            sell_cnt = int(ebay.get_total_count(response))
+            print("sell_cnt is ...", sell_cnt)
             response = ebay.detail_search(keywords=name, add_options=add_options)
-            cnt = int(ebay.get_total_count(response))
-            print(name, cnt)
+            sold_cnt = int(ebay.get_total_count(response))
+            print("sold_cnt is ...", sold_cnt)
+            if sell_cnt > sold_cnt:
+                cnt = None
+            else:
+                cnt = sold_cnt
+                print(name, sold_cnt)
         except:
             cnt = None
         counts.append(cnt)
@@ -348,7 +356,7 @@ def plot(df):
 
 
 # from machine_learnings import *
-import machine_learnings
+from modules import machine_learnings
 
 
 def exec_all(keywords="nikon"):

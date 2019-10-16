@@ -1,7 +1,10 @@
+import os
+ENV = os.getenv("ENV")
+
 import re
 import pandas as pd
 from ebaysdk.finding import Connection as finding
-from google import Google
+from modules.google import Google
 
 # for get_model()
 import urllib3
@@ -66,7 +69,7 @@ class Ebay:
         'topRatedListing': 'false'
     }
     """
-    config_file = "ebay.yaml"
+    config_file = "modules/ebay.yaml"
     _method_names = ("findCompletedItems", "findItemsAdvanced",)
     column_permutations = (
         "JP_shortTitle", "shortTitle",  "itemId", "title", "viewItemURL", "currentPrice", "currency", "country", "primaryCategory.categoryId",
