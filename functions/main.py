@@ -88,34 +88,56 @@ def ebay2df(event, context):
     """
         STEP 2 : キーワード Ebay 検索
     """
-    s_titles = df.shortTitle
-    models = df.model
-    category_ids = df["primaryCategory.categoryId"]
-
-    counts = []
-    for title, model, category_id in zip(s_titles, models, category_ids):
-        try:
-            name = model if model is not None else title
-            add_options = {"categoryId": category_id}
-            response = ebay.detail_search(method_name="findItemsAdvanced", keywords=name, add_options=add_options)
-            sell_cnt = int(ebay.get_total_count(response))
-            print("sell_cnt is ...", sell_cnt)
-            response = ebay.detail_search(keywords=name, add_options=add_options)
-            sold_cnt = int(ebay.get_total_count(response))
-            print("sold_cnt is ...", sold_cnt)
-            if sell_cnt > sold_cnt:
-                cnt = None
-            else:
-                cnt = sold_cnt
-                print(name, sold_cnt)
-        except:
-            cnt = None
-        counts.append(cnt)
-
-    df["TotalCounts"] = counts
-
-    # count数でソート
-    df = df.sort_values(by=["TotalCounts"], ascending=False)
+    # s_titles = df.shortTitle
+    # models = df.model
+    # category_ids = df["primaryCategory.categoryId"]
+    #
+    # counts = []
+    # for title, model, category_id in zip(s_titles, models, category_ids):
+    #     try:
+    #         name = model if model is not None else title
+    #         add_options = {
+    #             "categoryId": category_id,
+    #             "itemFilter": [
+    #                 # Used
+    #                 {
+    #                    "name": "Condition",
+    #                    "value": 3000
+    #                 },
+    #                 # not Auction
+    #                 {
+    #                    "name": "ListingType",
+    #                    "value": "FixedPrice"
+    #                 },
+    #                 # Sold Items
+    #                 # {
+    #                 #    "name": "SoldItemsOnly",
+    #                 #    "value": "true"
+    #                 # }
+    #             ]
+    #         }
+    #         response = ebay.detail_search(method_name="findItemsAdvanced", keywords=name, add_options=add_options)
+    #         sell_cnt = int(ebay.get_total_count(response))
+    #         print("sell_cnt is ...", sell_cnt)
+    #         add_options = {
+    #             "categoryId": category_id
+    #         }
+    #         response = ebay.detail_search(keywords=name, add_options=add_options)
+    #         sold_cnt = int(ebay.get_total_count(response))
+    #         print("sold_cnt is ...", sold_cnt)
+    #         if sell_cnt > sold_cnt:
+    #             cnt = None
+    #         else:
+    #             cnt = sold_cnt
+    #             print(name, sold_cnt)
+    #     except:
+    #         cnt = None
+    #     counts.append(cnt)
+    #
+    # df["TotalCounts"] = counts
+    #
+    # # count数でソート
+    # df = df.sort_values(by=["TotalCounts"], ascending=False)
 
     # ターゲットの値を文字列から数値へ変換
     labelencoder = LabelEncoder()
@@ -279,8 +301,9 @@ def yahoo2df(event, context):
             print(token.pos_)
             if token.pos_ in ("PROPN", "NOUN", "NUM",):
                 words.append(token.text)
-        return " ".join(words)
-
+        # return " ".join(words)
+        ptn = r"[^a-zA-Z0-9\s]"
+        return re.sub(ptn, "", " ".join(words))
 
     df["short_Title"] = df.Title.apply(get_ja_short_title)
 
@@ -305,7 +328,7 @@ def similarity(ebay_df, yahoo_df):
     df = pd.DataFrame(columns=yahoo_df.columns)
 
     def same_category(i, arr, targets, yahoo_df):
-        max_index = arr.index(max(arr))
+        max_index = arr.index(max(arr))+1
         if str(yahoo_df.at[max_index, "Target_y"]) == str(targets[i]):
             return max_index
         else:
