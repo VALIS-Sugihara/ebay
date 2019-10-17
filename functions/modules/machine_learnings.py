@@ -29,6 +29,8 @@ from sklearn.model_selection import GridSearchCV
 # オリジナル辞書
 from modules.dictionary import Dictionary
 from modules.dictionary import FrequentDictionary
+from modules.decorators import print_func
+
 
 # Redis に接続します
 r = redis.Redis(host='localhost', port=6379, db=0)

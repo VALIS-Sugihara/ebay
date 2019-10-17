@@ -11,6 +11,10 @@ import spacy
 from sklearn.preprocessing import LabelEncoder
 import sys
 import os
+# from machine_learnings import *
+from modules import machine_learnings
+from modules.decorators import print_func
+
 
 args = sys.argv
 keywords = args[1]
@@ -22,6 +26,7 @@ nlp_ginza = spacy.load('ja_ginza_nopn')
 TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
 
 
+@print_func
 def ebay2df(event, context):
     ebay = Ebay()
 
@@ -153,12 +158,14 @@ def ebay2df(event, context):
     }
 
 
+@print_func
 def ebay_market_price(df):
     keywords = "nikon"
     df = df.groupby(["model", "primaryCategory.categoryId"], as_index=False).mean()
     df.to_csv("data/ebay_market_price_%s.csv" % (keywords,))
 
 
+@print_func
 def rakuten2df(event, context):
     rakuten = Rakuten()
 
@@ -234,6 +241,7 @@ def rakuten2df(event, context):
     }
 
 
+@print_func
 def yahoo2df(event, context):
     yahoo = Yahoo()
 
@@ -319,6 +327,7 @@ def yahoo2df(event, context):
     }
 
 
+# @print_func
 def similarity(ebay_df, yahoo_df):
     """ 相関性の高いレコードを連結 """
     shortTitles = ebay_df["shortTitle"].to_list()
@@ -328,7 +337,7 @@ def similarity(ebay_df, yahoo_df):
     df = pd.DataFrame(columns=yahoo_df.columns)
 
     def same_category(i, arr, targets, yahoo_df):
-        max_index = arr.index(max(arr))+1
+        max_index = arr.index(max(arr))
         if str(yahoo_df.at[max_index, "Target_y"]) == str(targets[i]):
             return max_index
         else:
@@ -354,13 +363,14 @@ def similarity(ebay_df, yahoo_df):
             print(max_index)
             df = df.append(yahoo_df.loc[max_index:max_index])
             print(df.tail())
-        except ValueError as e:
-            print(e)
-            d = {}
-            for c in df.columns:
-                d[c] = None
-            empty_list = pd.DataFrame(d, columns=df.columns)
-            df = df.append(empty_list, ignore_index=True)
+        except:
+            print("raise except!!!!!!!")
+            # d = {}
+            # for c in df.columns:
+            #     d[c] = None
+            # empty_list = pd.DataFrame(d, columns=df.columns)
+            # df = df.append(empty_list)
+            df = df.append(yahoo_df.loc[0:0])
             print(df.tail())
             continue
 
@@ -372,20 +382,18 @@ def similarity(ebay_df, yahoo_df):
     df3.to_csv("data/ebay_yahoo_detail_%s.csv" % (TODAY,))
 
 
+@print_func
 def plot(df):
     import seaborn as sns
     # 特徴量の散布図行列
     sns.pairplot(data=df, hue='type')
 
 
-# from machine_learnings import *
-from modules import machine_learnings
-
-
+@print_func
 def exec_all(keywords="nikon"):
     try:
-        ebay2df({"keywords": keywords}, True)
-        yahoo2df({"query": keywords}, True)
+        # ebay2df({"keywords": keywords}, True)
+        # yahoo2df({"query": keywords}, True)
 
         machine_learnings.categories(keywords)
         machine_learnings.ml(keywords)
