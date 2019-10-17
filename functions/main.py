@@ -392,8 +392,8 @@ def plot(df):
 @print_func
 def exec_all(keywords="nikon"):
     try:
-        # ebay2df({"keywords": keywords}, True)
-        # yahoo2df({"query": keywords}, True)
+        ebay2df({"keywords": keywords}, True)
+        yahoo2df({"query": keywords}, True)
 
         machine_learnings.categories(keywords)
         machine_learnings.ml(keywords)
