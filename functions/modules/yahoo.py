@@ -39,8 +39,8 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
         'IsAdult': 'false'
     }
     """
-    column_permutations = ("Title", "CurrentPrice", "BidOrBuy", "shopName", "ItemUrl", "CategoryId",)
-    property_permutations = ("Title", "CurrentPrice", "BidOrBuy", "shopName", "ItemUrl", "CategoryId",)
+    column_permutations = ("Title", "CurrentPrice", "BidOrBuy", "shopName", "ItemUrl", "CategoryId", "EndTime",)
+    property_permutations = ("Title", "CurrentPrice", "BidOrBuy", "shopName", "ItemUrl", "CategoryId", "EndTime",)
 
     def __init__(self):
         pass
@@ -52,6 +52,8 @@ se', 'IsBackGroundColor': 'false', 'IsOffer': 'false', 'IsCharity': 'false'},
             'query': query,
             "page": 1,
             "type": "any",  # all（全文一致） or any（部分一致）
+            "sort": "end",
+            "order": "d",  # ソートの順番です。（a ：昇順　d ：降順）
             # "category": {id},
             # 'output': 'json',
         }
