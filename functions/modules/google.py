@@ -14,6 +14,7 @@ class Google:
         response = requests.get(url)
 
         if response.status_code != 200:
+            return " "
             raise ConnectionError
 
         return response.text

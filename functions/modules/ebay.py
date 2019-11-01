@@ -232,10 +232,16 @@ class Ebay:
             return None
 
     def get_total_count(self, response):
-        return response.reply.paginationOutput.totalEntries
+        try:
+            return response.reply.paginationOutput.totalEntries
+        except:
+            return 0
 
     def get_total_pages(self, response):
-        return response.reply.paginationOutput.totalPages
+        try:
+            return response.reply.paginationOutput.totalPages
+        except:
+            return 0
 
     def _set_keywords(self, keywords):
         self.keywords = keywords.split()[0]

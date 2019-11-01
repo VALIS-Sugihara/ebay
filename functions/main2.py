@@ -1,3 +1,4 @@
+import pandas as pd
 from modules.google import Google
 from modules.yahoo import Yahoo
 from modules.ebay import Ebay
@@ -99,13 +100,19 @@ def yahoo2df(event, context):
 
 def hot_selling(keywords):
     from modelnumbers.sekonic import Sekonic
+    from modelnumbers.pre_limit import PreLimit
 
     ebay = Ebay()
 
-    item_list = Sekonic.modelnumbers
+    # item_list = Sekonic.modelnumbers
+    item_list = PreLimit.modelnumbers
+    # item_list = pd.read_csv("modelnumbers/pentax.csv").model.to_list()
 
     result = []
     for item in item_list:
+        if item.strip() == "":
+            continue
+        item = str(item)
         # NOW
         add_options = {
             "itemFilter": [
@@ -129,7 +136,7 @@ def hot_selling(keywords):
         print("======", item, "======")
         print("now_cnt: %s | sold_cnt: %s" % (now_cnt, sold_cnt,))
 
-        if now_cnt <= sold_cnt:
+        if 0 < int(now_cnt) < int(sold_cnt):
             result.append(item)
 
     print("result is ...", result)
@@ -137,5 +144,11 @@ def hot_selling(keywords):
 
 
 result = hot_selling("sekonic")
-for item in result:
-    yahoo2df({"query": item}, True)
+# for item in result:
+#     yahoo2df({"query": item}, True)
+
+# df = pd.read_csv("data/ebay_detail_pentax_model_20191031.csv")
+# df1 = pd.DataFrame()
+# df1["model"] = df.model.unique()
+# print(df1.head())
+# df1.to_csv("modelnumbers/pentax.csv")
