@@ -116,12 +116,16 @@ def hot_selling(keywords):
     df = pd.DataFrame(columns=columns)
     result = []
     for i, item in enumerate(item_list):
-        model = str(item[0])
+        if isinstance(item, tuple) or isinstance(item, list):
+            model = str(item[0])
+            query = str(item[1])  # TODO:: make query
+        else:
+            model = str(item)
+            query = str(item)
+
         if model.strip() == "":
             continue
 
-        # TODO:: make query
-        query = str(item[1])
         # NOW
         add_options = {
             "itemFilter": [
@@ -151,8 +155,8 @@ def hot_selling(keywords):
         series = pd.Series([model, now_cnt, sold_cnt, TODAY, keywords, query], index=df.columns, name=str(i))
         df = df.append(series)
 
-    df.to_csv("data/items_%s_%s.csv" % (keywords, TODAY,))
     print("result is ...", result)
+    df.to_csv("data/items_%s_%s.csv" % (keywords, TODAY,))
     return result
 
 
