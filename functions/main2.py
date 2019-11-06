@@ -6,11 +6,15 @@ from modules.decorators import print_func
 import re
 import spacy
 import datetime
+import sys
+
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
 nlp = spacy.load('en_core_web_md')
 nlp_ginza = spacy.load('ja_ginza_nopn')
 
 TODAY = datetime.datetime.now().date().strftime("%Y%m%d")
+args = sys.argv
+KEYWORDS = args[1]
 
 
 @print_func
@@ -104,15 +108,20 @@ def hot_selling(keywords):
 
     ebay = Ebay()
 
-    # item_list = Sekonic.modelnumbers
-    item_list = PreLimit.modelnumbers
+    item_list = Sekonic.modelnumbers
+    # item_list = PreLimit.modelnumbers
     # item_list = pd.read_csv("modelnumbers/pentax.csv").model.to_list()
 
+    columns = ("modelnumber", "now", "sold", "date", "category", "query",)
+    df = pd.DataFrame(columns=columns)
     result = []
-    for item in item_list:
-        if item.strip() == "":
+    for i, item in enumerate(item_list):
+        model = str(item[0])
+        if model.strip() == "":
             continue
-        item = str(item)
+
+        # TODO:: make query
+        query = str(item[1])
         # NOW
         add_options = {
             "itemFilter": [
@@ -128,22 +137,45 @@ def hot_selling(keywords):
                 },
             ]
         }
-        response = ebay.general_search(method_name="findItemsAdvanced", keywords=item, add_options=add_options)
+        response = ebay.general_search(method_name="findItemsAdvanced", keywords=query, add_options=add_options)
         now_cnt = ebay.get_total_count(response)
         # Sold
-        response = ebay.general_search(method_name="findCompletedItems", keywords=item, add_options={})
+        response = ebay.general_search(method_name="findCompletedItems", keywords=query, add_options={})
         sold_cnt = ebay.get_total_count(response)
-        print("======", item, "======")
+        print("======", model, "======")
         print("now_cnt: %s | sold_cnt: %s" % (now_cnt, sold_cnt,))
 
         if 0 < int(now_cnt) < int(sold_cnt):
             result.append(item)
 
+        series = pd.Series([model, now_cnt, sold_cnt, TODAY, keywords, query], index=df.columns, name=str(i))
+        df = df.append(series)
+
+    df.to_csv("data/items_%s_%s.csv" % (keywords, TODAY,))
     print("result is ...", result)
     return result
 
 
-result = hot_selling("sekonic")
+def insert_catalog():
+    from modules.aws.dynamodb import Dynamodb
+
+    db = Dynamodb()
+
+    df = pd.read_csv("data/items_sekonic_20191106.csv")
+    index = df.index.values
+    for i in index:
+        value = df.loc[i]
+        item = dict(zip(df.columns, value))
+        del item["Unnamed: 0"]
+
+        response = db.put_item("catalogs", item)
+
+    return response
+
+
+# insert_catalog()
+
+result = hot_selling(KEYWORDS)
 # for item in result:
 #     yahoo2df({"query": item}, True)
 
