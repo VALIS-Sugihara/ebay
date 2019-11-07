@@ -51,7 +51,7 @@ class Sekonic:
         ("Sekonic L-256", "Sekonic L-256 -256D",),
         ("Sekonic L-256D", "Sekonic L-256D",),
         ("Sekonic L-258", "Sekonic L-258",),
-        ("Sekonic L-308", "Sekonic L-308 -308B",),
+        ("Sekonic L-308", "Sekonic L-308 -308B -308BII -308S",),
         ("Sekonic L-308B", "Sekonic L-308B -308BII",),
         ("Sekonic L-308BII", "Sekonic L-308BII",),
         ("Sekonic L-308S", "Sekonic L-308S",),
