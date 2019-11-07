@@ -22,7 +22,7 @@ class PreLimit:
         "Mamiya Left Hand Grip L rb67",
         "Minolta Flash Meter III",
         "Minolta 50 F1.7",
-        "MInolta AF 70-210mm F4",
+        "Minolta AF 70-210mm F4",
         "Minolta PROGRAM 5400 HS",
         "Minolta Auto Meter III",
         "Minolta 300-S MD 2x Tele Converter",

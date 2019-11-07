@@ -108,11 +108,11 @@ def hot_selling(keywords):
 
     ebay = Ebay()
 
-    item_list = Sekonic.modelnumbers
-    # item_list = PreLimit.modelnumbers
+    # item_list = Sekonic.modelnumbers
+    item_list = PreLimit.modelnumbers
     # item_list = pd.read_csv("modelnumbers/pentax.csv").model.to_list()
 
-    columns = ("modelnumber", "now", "sold", "date", "category", "query",)
+    columns = ("model", "now", "sold", "date", "brand", "query",)
     df = pd.DataFrame(columns=columns)
     result = []
     for i, item in enumerate(item_list):
@@ -150,22 +150,24 @@ def hot_selling(keywords):
         print("now_cnt: %s | sold_cnt: %s" % (now_cnt, sold_cnt,))
 
         if 0 < int(now_cnt) < int(sold_cnt):
-            result.append(item)
+            result.append(query)
 
         series = pd.Series([model, now_cnt, sold_cnt, TODAY, keywords, query], index=df.columns, name=str(i))
         df = df.append(series)
 
     print("result is ...", result)
-    df.to_csv("data/items_%s_%s.csv" % (keywords, TODAY,))
+    file_path = "data/items_%s_%s.csv" % (keywords, TODAY,)
+    df.to_csv(file_path)
+    insert_catalog(file_path)
     return result
 
 
-def insert_catalog():
+def insert_catalog(file_path):
     from modules.aws.dynamodb import Dynamodb
 
     db = Dynamodb()
 
-    df = pd.read_csv("data/items_sekonic_20191106.csv")
+    df = pd.read_csv(file_path)
     index = df.index.values
     for i in index:
         value = df.loc[i]
@@ -177,9 +179,10 @@ def insert_catalog():
     return response
 
 
-# insert_catalog()
+# insert_catalog("data/items_sekonic_20191107.csv")
 
 result = hot_selling(KEYWORDS)
+
 # for item in result:
 #     yahoo2df({"query": item}, True)
 
