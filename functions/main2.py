@@ -3,6 +3,8 @@ from modules.google import Google
 from modules.yahoo import Yahoo
 from modules.ebay import Ebay
 from modules.decorators import print_func
+from modules.aws.dynamodb import Dynamodb
+from modules.aws.sns import Sns
 import re
 import spacy
 import datetime
@@ -105,11 +107,16 @@ def yahoo2df(event, context):
 def hot_selling(keywords):
     from modelnumbers.sekonic import Sekonic
     from modelnumbers.pre_limit import PreLimit
+    from modelnumbers.nikon import Nikon
 
     ebay = Ebay()
+    sns = Sns()
+    message = ""
+    subject = ""
 
-    # item_list = Sekonic.modelnumbers
-    item_list = PreLimit.modelnumbers
+    item_list = Sekonic.modelnumbers
+    # item_list = PreLimit.modelnumbers
+    # item_list = Nikon.modelnumbers
     # item_list = pd.read_csv("modelnumbers/pentax.csv").model.to_list()
 
     columns = ("model", "now", "sold", "date", "brand", "query",)
@@ -147,7 +154,9 @@ def hot_selling(keywords):
         response = ebay.general_search(method_name="findCompletedItems", keywords=query, add_options={})
         sold_cnt = ebay.get_total_count(response)
         print("======", model, "======")
+        message += str("====== " + model + " ======\n")
         print("now_cnt: %s | sold_cnt: %s" % (now_cnt, sold_cnt,))
+        message += str("now_cnt: %s | sold_cnt: %s\n" % (now_cnt, sold_cnt,))
 
         if 0 < int(now_cnt) < int(sold_cnt):
             result.append(query)
@@ -156,6 +165,12 @@ def hot_selling(keywords):
         df = df.append(series)
 
     print("result is ...", result)
+    message += str("result is ... %s" % (result,))
+    subject += str("result ( " + keywords + " )")
+    sns.publish(message=message, subject=subject)
+    return
+
+
     file_path = "data/items_%s_%s.csv" % (keywords, TODAY,)
     df.to_csv(file_path)
     insert_catalog(file_path)
@@ -163,8 +178,6 @@ def hot_selling(keywords):
 
 
 def insert_catalog(file_path):
-    from modules.aws.dynamodb import Dynamodb
-
     db = Dynamodb()
 
     df = pd.read_csv(file_path)
