@@ -9,6 +9,7 @@ import re
 import spacy
 import datetime
 import sys
+import time
 
 # 英語のtokenizer、tagger、parser、NER、word vectorsをインポート
 nlp = spacy.load('en_core_web_md')
@@ -114,12 +115,12 @@ def hot_selling(keywords):
     message = ""
     subject = ""
 
-    item_list = Sekonic.modelnumbers
+    # item_list = Sekonic.modelnumbers
     # item_list = PreLimit.modelnumbers
-    # item_list = Nikon.modelnumbers
+    item_list = Nikon.modelnumbers
     # item_list = pd.read_csv("modelnumbers/pentax.csv").model.to_list()
 
-    columns = ("model", "now", "sold", "date", "brand", "query",)
+    columns = ("model", "now", "sold", "date", "brand", "query", "timestamp",)
     df = pd.DataFrame(columns=columns)
     result = []
     for i, item in enumerate(item_list):
@@ -161,15 +162,13 @@ def hot_selling(keywords):
         if 0 < int(now_cnt) < int(sold_cnt):
             result.append(query)
 
-        series = pd.Series([model, now_cnt, sold_cnt, TODAY, keywords, query], index=df.columns, name=str(i))
+        series = pd.Series([model, now_cnt, sold_cnt, TODAY, keywords, query, time.time()], index=df.columns, name=str(i))
         df = df.append(series)
 
     print("result is ...", result)
     message += str("result is ... %s" % (result,))
     subject += str("result ( " + keywords + " )")
     sns.publish(message=message, subject=subject)
-    return
-
 
     file_path = "data/items_%s_%s.csv" % (keywords, TODAY,)
     df.to_csv(file_path)
